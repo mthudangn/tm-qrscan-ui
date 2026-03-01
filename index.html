@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>QR Scan Mode</title>
+
+  <style>
+    :root{
+      --bg:#FFFDFB;
+      --card:#FFF0E8;
+      --text:#0F172A;
+      --muted:#475569;
+
+      --primary:#FFBFA8;
+      --accentStrong:#FF8F7A;
+
+      --teal:#40D2CC;
+      --tealStrong:#0B7F7A;
+      --tealText:#055E5A;
+
+      --border:#F3ECE7;
+      --shadow:0 16px 40px rgba(2, 24, 43, .12);
+      --radius:22px;
+
+      --base: clamp(22px, 5.0vw + 10px, 34px);
+      --h4:   clamp(18px, 3.6vw + 10px, 26px);
+      --btn:  clamp(22px, 5.0vw + 10px, 34px);
+
+      --pad:  clamp(16px, 3.2vw + 10px, 24px);
+      --gap:  clamp(14px, 2.8vw + 10px, 20px);
+
+      --glassA: rgba(255,255,255,.16);
+      --glassB: rgba(255,255,255,.10);
+      --glassBorder: rgba(255,255,255,.34);
+      --glassBorder2: rgba(255,255,255,.18);
+      --glassShadow: 0 18px 44px rgba(2,24,43,.22);
+      --glassShadowSoft: 0 10px 22px rgba(2,24,43,.14);
+
+      --spring: cubic-bezier(.16, 1, .3, 1);
+      --ease: cubic-bezier(.2,.9,.2,1);
+    }
+
+    *{box-sizing:border-box}
+
+    html, body{
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body{
+      margin:0;
+      padding:
+        calc(var(--pad) + env(safe-area-inset-top))
+        var(--pad)
+        calc(var(--pad) + env(safe-area-inset-bottom));
+      background:
+        radial-gradient(1200px 700px at 10% 0%, rgba(242,187,159,.32), transparent 55%),
+        radial-gradient(1200px 700px at 90% 10%, rgba(64,210,204,.14), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font-size: var(--base);
+      min-height: 100svh;
+    }
+
+    .wrap{
+      width:100%;
+      max-width: 920px;
+      margin:0 auto;
+      display:flex;
+      flex-direction:column;
+      gap: var(--gap);
+    }
+
+    .top{
+      border-radius:var(--radius);
+      background:linear-gradient(135deg, #FFD08A, #FFBFA8);
+      color:#fff;
+      box-shadow:var(--shadow);
+      padding: calc(var(--pad) + 2px);
+    }
+    .top .t1{
+      font-weight:1000;
+      letter-spacing:.5px;
+      font-size: calc(var(--base) * 1.05);
+    }
+    .top .t2{
+      opacity:.92;
+      margin-top:8px;
+      font-size: calc(var(--base) * .80);
+      line-height:1.25;
+    }
+
+    .card{
+      background:rgba(251,231,224,.80);
+      border:1px solid rgba(242,236,234,.92);
+      border-radius:var(--radius);
+      padding: calc(var(--pad) + 2px);
+      box-shadow:0 2px 12px rgba(2, 24, 43, .06);
+    }
+
+    h4{
+      margin:0 0 14px;
+      font-size: var(--h4);
+      letter-spacing:.7px;
+      text-transform:uppercase;
+      color:var(--muted);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:1000;
+    }
+
+    label{
+      font-size: calc(var(--base) * .92);
+      color:var(--muted);
+      margin:0 0 10px;
+      display:block;
+      font-weight:900;
+    }
+
+    input, select{
+      width:100%;
+      padding: 22px 18px;
+      border:1px solid rgba(242,236,234,.95);
+      border-radius:20px;
+      font-size: var(--base);
+      outline:none;
+      background:#fff;
+      box-shadow: 0 4px 14px rgba(2,24,43,.06);
+      transition: box-shadow 180ms var(--ease), border-color 180ms var(--ease), transform 180ms var(--spring);
+    }
+
+    input:focus, select:focus{
+      border-color: rgba(11,127,122,.55);
+      box-shadow: 0 0 0 4px rgba(64,210,204,.22), 0 6px 16px rgba(2,24,43,.08);
+    }
+
+    .grid2{
+      display:grid;
+      gap: var(--gap);
+      grid-template-columns: 1fr;
+    }
+    @media (min-width:820px){
+      .grid2{ grid-template-columns: .85fr 1.15fr; }
+    }
+
+    .hint{
+      font-size: calc(var(--base) * .80);
+      color:var(--muted);
+      margin-top:10px;
+      line-height:1.25;
+    }
+
+    .btn{
+      width:100%;
+      border:none;
+      border-radius:22px;
+      padding: 22px 18px;
+      font-size: var(--btn);
+      font-weight:1100;
+      color: rgba(255,255,255,.94);
+      cursor:pointer;
+
+      position:relative;
+      overflow:hidden;
+      transform: translateZ(0);
+      will-change: transform;
+
+      border: 1px solid var(--glassBorder);
+      background:
+        radial-gradient(140px 90px at 18% 18%, rgba(255,255,255,.36), transparent 62%),
+        radial-gradient(220px 140px at 82% 8%, rgba(255,255,255,.22), transparent 72%),
+        linear-gradient(135deg, rgba(64,210,204,.42), rgba(255,143,122,.32)),
+        linear-gradient(180deg, var(--glassA), var(--glassB));
+      -webkit-backdrop-filter: blur(14px) saturate(155%);
+      backdrop-filter: blur(14px) saturate(155%);
+      box-shadow: var(--glassShadowSoft);
+
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      -webkit-tap-highlight-color: transparent;
+
+      transition:
+        transform 240ms var(--spring),
+        box-shadow 240ms var(--spring),
+        filter 200ms var(--ease),
+        border-color 200ms var(--ease),
+        background 240ms var(--ease);
+    }
+
+    .btn.secondary{
+      border-color: rgba(255,255,255,.30);
+      background:
+        radial-gradient(140px 90px at 18% 18%, rgba(255,255,255,.32), transparent 62%),
+        radial-gradient(220px 140px at 82% 8%, rgba(255,255,255,.18), transparent 72%),
+        linear-gradient(135deg, rgba(242,187,159,.44), rgba(229,138,106,.32)),
+        linear-gradient(180deg, var(--glassA), var(--glassB));
+      -webkit-backdrop-filter: blur(14px) saturate(145%);
+      backdrop-filter: blur(14px) saturate(145%);
+    }
+
+    .btn::before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background:
+        conic-gradient(from 180deg at 50% 50%,
+          rgba(255,255,255,.55),
+          rgba(255,255,255,.10),
+          rgba(255,255,255,.38),
+          rgba(255,255,255,.08),
+          rgba(255,255,255,.55));
+      opacity: .22;
+      filter: blur(10px);
+      transform: translateX(-18%) translateY(-10%) rotate(12deg);
+      transition: opacity 260ms var(--ease), transform 420ms var(--ease);
+      pointer-events:none;
+    }
+
+    .btn::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        linear-gradient(115deg,
+          transparent 0%,
+          rgba(255,255,255,.18) 35%,
+          rgba(255,255,255,.44) 45%,
+          rgba(255,255,255,.16) 55%,
+          transparent 70%);
+      opacity:.16;
+      transform: translateX(-26%);
+      transition: opacity 240ms var(--ease), transform 520ms var(--ease);
+      pointer-events:none;
+    }
+
+    .btn:active{
+      transform: scale(0.972);
+      filter: brightness(.985) saturate(1.08);
+      box-shadow: 0 10px 22px rgba(2,24,43,.18);
+      border-color: rgba(255,255,255,.50);
+    }
+    .btn:active::before{
+      opacity:.34;
+      transform: translateX(-8%) translateY(-8%) rotate(7deg);
+    }
+    .btn:active::after{
+      opacity:.26;
+      transform: translateX(10%);
+    }
+
+    .btn{ animation: none; }
+    .btn:not(:active){ animation: glassPop 260ms var(--spring); }
+    @keyframes glassPop{
+      0%   { transform: scale(0.972); }
+      55%  { transform: scale(1.012); }
+      100% { transform: scale(1.0); }
+    }
+
+    .btn:focus-visible{
+      outline:none;
+      box-shadow: 0 0 0 6px rgba(64,210,204,.20), var(--glassShadow);
+      border-color: rgba(255,255,255,.56);
+    }
+
+    .btn:disabled{
+      opacity:.60;
+      cursor:not-allowed;
+      box-shadow:none;
+      filter:saturate(.9);
+      border-color: rgba(255,255,255,.18);
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .btn, .btn::before, .btn::after{ transition:none !important; animation:none !important; }
+    }
+
+    .camWrap{
+      border-radius:20px;
+      overflow:hidden;
+      background:#000;
+      position:relative;
+      border:2px solid rgba(255,255,255,.25);
+      aspect-ratio: 1 / 1;
+      width: 100%;
+    }
+    .camWrap video{
+      width:100%;
+      height:100%;
+      display:block;
+      background:#000;
+      object-fit: cover;
+    }
+    .overlay{
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      pointer-events:none;
+    }
+    .box{
+      width:min(86vw, 460px);
+      aspect-ratio:1/1;
+      border-radius:20px;
+      border:3px solid rgba(255,255,255,.78);
+      box-shadow:0 0 0 999px rgba(0,0,0,.18);
+    }
+
+    .statusBig{
+      margin-top: var(--gap);
+      padding: 16px 18px;
+      border-radius:18px;
+      background:#fff;
+      border:2px solid rgba(15,23,42,.08);
+      font-weight:1000;
+      line-height:1.2;
+      font-size: calc(var(--base) * .95);
+    }
+    .statusBig.ok{ border-color: rgba(64,210,204,.85); }
+    .statusBig.skip{ border-color: rgba(255,143,122,.80); }
+    .statusBig.err{ border-color: rgba(239,68,68,.65); }
+
+    .temWrap{
+      margin-top: var(--gap);
+      background:#fff;
+      border:2px solid rgba(15,23,42,.08);
+      border-radius:20px;
+      padding: 16px;
+    }
+    .temTitleRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .temTitleRow .left{
+      font-weight:1100;
+      color:#0F172A;
+      font-size: calc(var(--base) * .80);
+      line-height:1.2;
+    }
+    .temTitleRow .right{
+      font-weight:1000;
+      color:#475569;
+      font-size: calc(var(--base) * .72);
+      white-space:nowrap;
+    }
+    .temRow{
+      display:flex;
+      gap:12px;
+      overflow-x:auto;
+      scroll-snap-type:x mandatory;
+      padding-bottom:6px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .temCard{
+      scroll-snap-align:start;
+      min-width: 94%;
+      max-width: 680px;
+      border-radius:20px;
+      border:2px solid rgba(15,23,42,.12);
+      background:#fff;
+      padding:16px;
+      box-shadow:0 10px 24px rgba(2,24,43,.08);
+    }
+    .temCard.ok{ border-color: rgba(64,210,204,.55); }
+    .temCard.skip{ border-color: rgba(255,143,122,.55); }
+    .temCard.err{ border-color: rgba(239,68,68,.55); }
+
+    .temBox{
+      border:2px solid rgba(15,23,42,.22);
+      border-radius:16px;
+      padding:0;
+      overflow:hidden;
+      background:#fff;
+    }
+    .temLine{
+      text-align:center;
+      padding:12px 12px;
+      line-height:1.15;
+      white-space:pre-line;
+    }
+    .temLine + .temLine{
+      border-top: 2px dashed rgba(15,23,42,.28);
+    }
+    .temL1{ font-weight:900; font-size: calc(var(--base) * .80); opacity:.92; }
+    .temL2{ font-weight:500; font-size: clamp(38px, 6.0vw + 18px, 56px); letter-spacing:.6px; }
+    .temL3{ font-weight:500; font-size: calc(var(--base) * .92); }
+    .temL4{ font-weight:1000; font-size: clamp(28px, 4.2vw + 16px, 40px); }
+    .temL5{ font-weight:500; font-size: calc(var(--base) * .92); opacity:.95; }
+
+    .temL7{
+      font-weight:900;
+      font-size: calc(var(--base) * .72);
+      letter-spacing:.2px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding-left:14px;
+      padding-right:14px;
+    }
+    .temL7 .left{ text-align:left; min-width: 90px; }
+    .temL7 .right{ text-align:right; margin-left:auto; }
+
+    .temFooter{
+      margin-top:12px;
+      font-size: calc(var(--base) * .72);
+      color:#475569;
+      font-weight:900;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .temTag{
+      display:inline-block;
+      padding:6px 12px;
+      border-radius:999px;
+      border:2px solid rgba(15,23,42,.10);
+      background:#fff;
+      font-weight:1100;
+    }
+    .temSteps{ margin-top:12px; font-size: calc(var(--base) * .72); }
+    .badges{ margin-top:8px; }
+    .badge{
+      display:inline-block;
+      padding:6px 12px;
+      border-radius:999px;
+      background:#E6FFFA;
+      color:#055E5A;
+      font-weight:900;
+      margin:6px 8px 0 0;
+      font-size: calc(var(--base) * .72);
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:max(16px, env(safe-area-inset-bottom));
+      background:#0F172A;
+      color:#fff;
+      border-radius:999px;
+      font-size: calc(var(--base) * .80);
+      padding:18px 20px;
+      box-shadow:var(--shadow);
+      display:none;
+      max-width:92vw;
+      z-index:99;
+      font-weight:1200;
+      text-align:center;
+      white-space: pre-line;
+    }
+    .toast.ok{ background: linear-gradient(135deg, #16a34a, #22c55e); }
+    .toast.err{ background: linear-gradient(135deg, #ef4444, #f97316); }
+
+    .scanResult{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      opacity:0;
+      transition:opacity .12s ease;
+      z-index:10;
+    }
+    .scanResult.show{ opacity:1; }
+    .scanResult.pending{ opacity:1; }
+    .scanResult.pending .ring{ animation: drawRing 1.1s linear infinite; }
+    .scanResult.pending .tick{ opacity:0 !important; animation:none !important; }
+
+    .centerPopup{
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:6;
+    }
+    .centerPopup.show{ display:flex; }
+
+    .popupCard{
+      width:min(88%, 380px);
+      background:#fff;
+      border-radius:24px;
+      padding:24px 20px 20px;
+      text-align:center;
+      box-shadow:0 24px 60px rgba(0,0,0,.35);
+    }
+    .popupTitle{
+      font-size: calc(var(--base) * .92);
+      font-weight:1200;
+      margin-bottom:10px;
+    }
+    .popupMsg{
+      font-size: calc(var(--base) * .72);
+      line-height:1.35;
+      white-space:pre-line;
+      margin-bottom:18px;
+      color:#0F172A;
+    }
+    .popupBtn{
+      width:100%;
+      border:none;
+      border-radius:999px;
+      padding:16px 18px;
+      font-size: calc(var(--base) * .82);
+      font-weight:1200;
+      cursor:pointer;
+      background:linear-gradient(135deg, #FF8F7A, #F59E0B);
+      color:#0F172A;
+    }
+    .centerPopup.err  .popupTitle{ color:#EF4444; }
+
+    .okAnim{ width:240px; height:240px; }
+    .okAnim .ring{
+      fill:none;
+      stroke:#40D2CC;
+      stroke-width:12;
+      stroke-linecap:round;
+      stroke-dasharray:290;
+      stroke-dashoffset:290;
+    }
+    .okAnim .tick{
+      fill:none;
+      stroke:#ffffff;
+      stroke-width:12;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      stroke-dasharray:80;
+      stroke-dashoffset:80;
+    }
+    .scanResult.show .ring{ animation: drawRing .45s ease-out forwards; }
+    .scanResult.show .tick{ animation: drawTick .16s ease-out .08s forwards; }
+
+    @keyframes drawRing{ to { stroke-dashoffset:0; } }
+    @keyframes drawTick{ to { stroke-dashoffset:0; } }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="t1">QR SCAN MODE</div>
+    <div class="t2">Hướng dẫn báo cáo: Chọn công đoạn → Bật camera → Quét mã liên tục</div>
+  </div>
+
+  <div class="card">
+    <h4>🧑‍🏭 Thông tin & công đoạn</h4>
+
+    <div class="grid2">
+      <div>
+        <label for="wInfo">Email / Tên / SĐT</label>
+        <input id="wInfo" type="text" inputmode="text" placeholder="Ví dụ: trongthanh@gmail.com hoặc Thành">
+      </div>
+
+      <div>
+        <label for="step">Công đoạn (chọn 1)</label>
+        <select id="step">
+          <option value="">--- Đang tải công đoạn ---</option>
+        </select>
+        <div class="hint">Quét từng mã cho công đoạn này.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px; display:grid; gap:12px; grid-template-columns:1fr 1fr;">
+      <button id="btnStart" class="btn" onclick="startScan()">📷 BẮT ĐẦU QUÉT</button>
+      <button id="btnStop" class="btn secondary" onclick="stopScan()" disabled>⏸ DỪNG</button>
+    </div>
+
+    <div style="margin-top:12px; display:grid; gap:12px; grid-template-columns: 1fr 1fr 1fr;">
+      <div class="card" style="padding:12px;border-radius:16px;background:#fff;">OK <b id="okC">0</b></div>
+      <div class="card" style="padding:12px;border-radius:16px;background:#fff;">SKIP <b id="skipC">0</b></div>
+      <div class="card" style="padding:12px;border-radius:16px;background:#fff;">ERROR <b id="errC">0</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>📸 Camera</h4>
+
+    <div class="camWrap">
+      <video id="video" playsinline muted autoplay></video>
+      <div class="overlay"><div class="box"></div></div>
+
+      <div class="scanResult" id="scanResult">
+        <svg class="okAnim" viewBox="0 0 120 120">
+          <circle class="ring" cx="60" cy="60" r="46"/>
+          <polyline class="tick" id="okTick" points="36,62 54,78 84,44"/>
+        </svg>
+      </div>
+
+      <div class="centerPopup" id="centerPopup">
+        <div class="popupCard">
+          <div class="popupTitle" id="popupTitle"></div>
+          <div class="popupMsg" id="popupMsg"></div>
+          <button class="popupBtn" onclick="hideCenterPopup()">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="statusBig" class="statusBig" style="margin-top:14px;">
+      Sẵn sàng! Chọn công đoạn + bấm “Bắt đầu quét”
+    </div>
+
+    <div class="temWrap">
+      <div class="temTitleRow">
+        <div class="left">Mã TEM bạn đã quét thành công (kéo ngang để xem)</div>
+        <div class="right" id="temHint">Chưa có</div>
+      </div>
+      <div class="temRow" id="temRow"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+<script>
+  if (window.QrScanner) {
+    QrScanner.WORKER_PATH = "https://unpkg.com/qr-scanner@1.4.2/dist/qr-scanner-worker.min.js";
+  }
+</script>
+
+<script>
+  // ✅ webapp /exec của bạn
+  const API_BASE = "https://script.google.com/macros/s/AKfycbw_kteSqa1auAMwlPOb8Y0JsBIqwsN-vGDNupJaCdD8wEMykrm6H5Tq6ddHX30--6M0/exec";
+
+  const btnStart = document.getElementById("btnStart");
+  const btnStop  = document.getElementById("btnStop");
+  const wInfo     = document.getElementById("wInfo");
+  const stepSel   = document.getElementById("step");
+  const video     = document.getElementById("video");
+
+  const statusBig = document.getElementById("statusBig");
+  const toast     = document.getElementById("toast");
+
+  const okC   = document.getElementById("okC");
+  const skipC = document.getElementById("skipC");
+  const errC  = document.getElementById("errC");
+
+  const temRow  = document.getElementById("temRow");
+  const temHint = document.getElementById("temHint");
+
+  const scanResult = document.getElementById("scanResult");
+  const okTick     = document.getElementById("okTick");
+
+  // ===== Worker memory (GIỐNG UI CŨ) =====
+  const WORKER_KEY = "QR_WORKER_EMAIL_V1";
+  const TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+  function loadWorker_(){
+    try{
+      const obj = JSON.parse(localStorage.getItem(WORKER_KEY) || "null");
+      if (!obj || !obj.email || !obj.ts) return "";
+      if (Date.now() - obj.ts > TTL_MS) { localStorage.removeItem(WORKER_KEY); return ""; }
+      return String(obj.email || "").trim();
+    } catch(e){ return ""; }
+  }
+  function saveWorker_(v){
+    localStorage.setItem(WORKER_KEY, JSON.stringify({ email: String(v||"").trim(), ts: Date.now() }));
+  }
+  const w0 = loadWorker_();
+  if (w0) wInfo.value = w0;
+  wInfo.addEventListener("input", ()=>{
+    const v = String(wInfo.value||"").trim();
+    if (v) saveWorker_(v);
+  });
+
+  // ===== popup =====
+  let errorPopupOpen = false;
+  const centerPopup = document.getElementById("centerPopup");
+  const popupTitle  = document.getElementById("popupTitle");
+  const popupMsg    = document.getElementById("popupMsg");
+
+  function showCenterPopup_(kind, title, msg){
+    errorPopupOpen = true;
+    toast.style.display = "none";
+    centerPopup.className = "centerPopup show" + (kind ? (" " + kind) : "");
+    popupTitle.textContent = title || "";
+    popupMsg.textContent = msg || "";
+  }
+  function hideCenterPopup(){
+    centerPopup.className = "centerPopup";
+    errorPopupOpen = false;
+  }
+  window.hideCenterPopup = hideCenterPopup;
+
+  function showPendingStart_(){ scanResult.classList.add("pending"); }
+  function showPendingStop_(){ scanResult.classList.remove("pending"); }
+
+  function showCheck_(){
+    showPendingStop_();
+    if (okTick) {
+      okTick.style.opacity = "1";
+      okTick.style.strokeDashoffset = "80";
+      okTick.getBoundingClientRect();
+    }
+    scanResult.classList.add("show");
+    setTimeout(()=>scanResult.classList.remove("show"), 650);
+  }
+
+  function setStatus_(kind, title, sub){
+    statusBig.className = "statusBig" + (kind ? (" " + kind) : "");
+    statusBig.textContent = sub ? `${title} — ${sub}` : title;
+  }
+
+  function showToast_(msg, kind, opts){
+    if (kind === "err"){
+      showCenterPopup_("err", "❌ LỖI", msg);
+      return;
+    }
+    const o = opts || {};
+    const sticky = !!o.sticky;
+
+    toast.className = "toast" + (kind ? (" " + kind) : "");
+    toast.style.display = "block";
+    toast.textContent = String(msg || "");
+
+    clearTimeout(showToast_._t);
+    if (!sticky){
+      showToast_._t = setTimeout(()=>toast.style.display="none", 1200);
+    }
+  }
+
+  function escapeHtml_(s){
+    return String(s||"")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+  }
+
+  function extractProductKey_(text){
+    const t = String(text || "").trim();
+    if (!t) return "";
+    const m = t.match(/[?&](productKey|pk)=([^&#]+)/i);
+    if (m && m[2]) {
+      try { return decodeURIComponent(m[2]).trim(); }
+      catch(e){ return String(m[2]).trim(); }
+    }
+    return t;
+  }
+
+  function renderTemCard_(payload){
+    const { pk, kind, temPrint, doneBadges = [] } = payload || {};
+    if (String(kind || "").toLowerCase() !== "ok") return;
+
+    const l1 = temPrint?.l1 || "";
+    const l2 = temPrint?.l2 || (pk || "");
+    const l3 = temPrint?.l3 || "";
+    const l4 = temPrint?.l4 || "";
+    const l5 = temPrint?.l5 || "";
+
+    const rawL7 = String(temPrint?.l7 || "").trim();
+    let khgh = "", stt = "";
+    const m = rawL7.match(/^(\d{2}\/\d{2})\s+(.+)$/);
+    if (m) { khgh = m[1] || ""; stt = String(m[2] || "").trim(); }
+    else { stt = rawL7; }
+
+    const meta = temPrint?.meta || {};
+    const stepLabel = meta.stepLabel || "";
+    const today = meta.today || "";
+
+    const card = document.createElement("div");
+    card.className = "temCard ok";
+
+    card.innerHTML = `
+      <div class="temBox">
+        ${l1 ? `<div class="temLine temL1">${escapeHtml_(l1)}</div>` : ``}
+        ${l2 ? `<div class="temLine temL2">${escapeHtml_(l2)}</div>` : ``}
+        ${l3 ? `<div class="temLine temL3">${escapeHtml_(l3)}</div>` : ``}
+        ${l4 ? `<div class="temLine temL4">${escapeHtml_(l4)}</div>` : ``}
+        ${l5 ? `<div class="temLine temL5">${escapeHtml_(l5)}</div>` : ``}
+        ${(khgh || stt) ? `
+          <div class="temLine temL7">
+            <span class="left">${escapeHtml_(khgh)}</span>
+            <span class="right">${escapeHtml_(stt)}</span>
+          </div>
+        ` : ``}
+      </div>
+
+      <div class="temFooter">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          ${stepLabel ? `<span class="temTag">${escapeHtml_(stepLabel)}</span>` : ``}
+          ${today ? `<span class="temTag">Ngày: ${escapeHtml_(today)}</span>` : ``}
+        </div>
+      </div>
+
+      ${
+        doneBadges.length
+          ? `
+            <div class="temSteps">
+              <b>✔️ Công đoạn đã quét:</b>
+              <div class="badges">
+                ${doneBadges.map(s => `<span class="badge">${escapeHtml_(s)}</span>`).join("")}
+              </div>
+            </div>
+          `
+          : ``
+      }
+    `;
+
+    temRow.appendChild(card);
+    while (temRow.children.length > 50) temRow.removeChild(temRow.firstChild);
+
+    temHint.textContent = "Kéo ngang để xem";
+    temRow.scrollTo({ left: temRow.scrollWidth, behavior: "smooth" });
+  }
+
+  // ===== beep/vibrate =====
+  let audioCtx = null;
+  function ensureAudioCtx_(){
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  }
+  function beepOk_(){
+    try{
+      ensureAudioCtx_();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "sine";
+      o.frequency.value = 880;
+      g.gain.value = 0.0001;
+      o.connect(g); g.connect(audioCtx.destination);
+
+      const t = audioCtx.currentTime;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.12, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.10);
+
+      o.start(t);
+      o.stop(t + 0.12);
+    } catch(e){}
+  }
+  function vibOk_(){ try{ navigator.vibrate?.(40); } catch(e){} }
+  function vibErr_(){ try{ navigator.vibrate?.(120); } catch(e){} }
+
+  // ===== API GET helper (avoid preflight) =====
+  async function apiGet_(params){
+    const u = new URL(API_BASE);
+    for (const [k,v] of Object.entries(params || {})){
+      if (v === undefined || v === null) continue;
+      u.searchParams.set(k, String(v));
+    }
+    const resp = await fetch(u.toString(), { method:"GET" });
+    return await resp.json();
+  }
+
+  // ===== load steps (equivalent to template) =====
+  async function fetchAndPopulateSteps_(){
+    try{
+      stepSel.innerHTML = '<option value="">--- Đang tải công đoạn ---</option>';
+      const j = await apiGet_({ action:"getSteps" });
+      if (!j || !j.ok || !Array.isArray(j.steps)) throw new Error("Invalid JSON");
+
+      stepSel.innerHTML = '<option value="">--- Chọn công đoạn ---</option>';
+      // accept: steps = ["S1",...] OR [{id,label},...]
+      for (const it of j.steps){
+        const id = (typeof it === "string") ? it : (it.id || "");
+        const label = (typeof it === "string") ? it : (it.label || it.id || "");
+        if (!id) continue;
+        const opt = document.createElement("option");
+        opt.value = String(id);
+        opt.textContent = String(label);
+        stepSel.appendChild(opt);
+      }
+    }catch(err){
+      console.error(err);
+      stepSel.innerHTML = '<option value="">--- Không tải được (bấm để thử lại) ---</option>';
+      stepSel.addEventListener("click", fetchAndPopulateSteps_, { once:true });
+    }
+  }
+  document.addEventListener("DOMContentLoaded", fetchAndPopulateSteps_);
+
+  // ===== scan state (giống UI cũ) =====
+  const SCAN = {
+    running:false,
+    inflight:false,
+    cooldownMs: 39,
+    lastHitTs: 0,
+    ok:0, skip:0, err:0
+  };
+
+  const PK_OK_LOCK_MS      = 2 * 60 * 1000;
+  const PK_TIMEOUT_LOCK_MS = 60 * 1000;
+  const PK_SHORT_LOCK_MS   = 800;
+  const PK_SKIP_LOCK_MS    = 2000;
+
+  const pkLock = new Map();
+  function isLockedPk_(pk){
+    const now = Date.now();
+    for (const [k, t] of pkLock) if (t <= now) pkLock.delete(k);
+    const t0 = pkLock.get(pk);
+    return !!(t0 && t0 > now);
+  }
+  function lockPk_(pk, ms){
+    const dur = Number(ms);
+    if (!dur || dur <= 0) return;
+    pkLock.set(pk, Date.now() + dur);
+  }
+
+  function inc_(k){
+    SCAN[k] = (SCAN[k]||0) + 1;
+    okC.textContent = String(SCAN.ok);
+    skipC.textContent = String(SCAN.skip);
+    errC.textContent = String(SCAN.err);
+  }
+
+  function lockUI_(on){
+    btnStart.disabled = on;
+    btnStop.disabled  = !on;
+    stepSel.disabled  = on;
+    wInfo.disabled    = on;
+  }
+
+  // ===== camera loop (same) =====
+  let camStream = null;
+  let scanLoopOn = false;
+  let scanLoopTimer = null;
+  let cameraReady = false;
+  let lastSeenTs = 0;
+  let liveClearLoop = null;
+
+  function assertSecureContext_(){
+    if (!window.isSecureContext) throw new Error("Camera requires HTTPS (secure context).");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("getUserMedia is not available in this browser.");
+    }
+  }
+
+  async function openCameraOnce_(){
+    const tries = [
+      { audio:false, video:true },
+      { audio:false, video:{ facingMode:"environment" } },
+      { audio:false, video:{ facingMode:{ ideal:"environment" } } },
+    ];
+    let lastErr = null;
+
+    for (const constraints of tries){
+      try{
+        camStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = camStream;
+        try { await video.play(); } catch(e){}
+
+        const t0 = Date.now();
+        while ((!video.videoWidth || !video.videoHeight) && (Date.now() - t0 < 2000)) {
+          await new Promise(r => setTimeout(r, 40));
+        }
+        if (!video.videoWidth || !video.videoHeight) {
+          try{ camStream.getTracks().forEach(t => t.stop()); }catch(e){}
+          camStream = null;
+          video.srcObject = null;
+          throw new Error("Camera started but video not ready.");
+        }
+        return;
+      }catch(e){
+        lastErr = e;
+        try{ if (camStream) camStream.getTracks().forEach(t => t.stop()); }catch(_){}
+        camStream = null;
+        try{ video.srcObject = null; }catch(_){}
+      }
+    }
+    throw lastErr || new Error("Cannot open camera");
+  }
+
+  function closeCamera_(){
+    try{ if (camStream) camStream.getTracks().forEach(t => t.stop()); }catch(e){}
+    camStream = null;
+    try{ video.srcObject = null; }catch(e){}
+  }
+
+  function startScanLoop_(){
+    scanLoopOn = true;
+
+    const LOOP_MS = 90;
+    async function tick(){
+      if (!scanLoopOn || !SCAN.running) return;
+
+      if (!cameraReady || errorPopupOpen || SCAN.inflight) {
+        scanLoopTimer = setTimeout(tick, LOOP_MS);
+        return;
+      }
+
+      try{
+        const vw = video.videoWidth, vh = video.videoHeight;
+        const RATIO = 0.68;
+        const size = Math.floor(Math.min(vw, vh) * RATIO);
+        const sx = Math.floor((vw - size) / 2);
+        const sy = Math.floor((vh - size) / 2);
+
+        const res = await QrScanner.scanImage(video, {
+          returnDetailedScanResult: true,
+          scanRegion: { x: sx, y: sy, width: size, height: size }
+        });
+
+        const raw = String(res?.data || res || "").trim();
+        if (raw){
+          const now = Date.now();
+          if (now - SCAN.lastHitTs >= SCAN.cooldownMs) {
+            SCAN.lastHitTs = now;
+
+            const pk = extractProductKey_(raw);
+            if (pk){
+              lastSeenTs = now;
+              if (isLockedPk_(pk)) {
+                setStatus_("skip", "⛔ ĐÃ QUÉT", pk);
+              } else {
+                onScan_(pk);
+              }
+            }
+          }
+        }
+      } catch(e){
+        const msg = String(e?.message || "");
+        if (!/No QR code found|No QR code|NotFound/i.test(msg)) {
+          setStatus_("err", "❌ LỖI SCAN", msg || "Unknown");
+        }
+      }
+
+      scanLoopTimer = setTimeout(tick, LOOP_MS);
+    }
+
+    tick();
+  }
+
+  function stopScanLoop_(){
+    scanLoopOn = false;
+    if (scanLoopTimer) { clearTimeout(scanLoopTimer); scanLoopTimer = null; }
+  }
+
+  async function startScan(){
+    const worker = String(wInfo.value||"").trim();
+    const step = String(stepSel.value||"").trim();
+    if (!worker){ wInfo.focus(); return; }
+    if (!step){ showToast_("⚠️ Chọn công đoạn trước khi quét mã", "warn"); stepSel.focus(); return; }
+
+    saveWorker_(worker);
+    ensureAudioCtx_();
+
+    lockUI_(true);
+    setStatus_("", "⏳ Đang bật camera...");
+
+    try{
+      SCAN.running = true;
+      assertSecureContext_();
+
+      await openCameraOnce_();
+      cameraReady = true;
+      lastSeenTs = Date.now();
+
+      if (!liveClearLoop){
+        liveClearLoop = setInterval(() => {
+          if (!SCAN.running) return;
+          if (SCAN.inflight) return;
+          if (centerPopup.classList.contains("show")) return;
+          if (Date.now() - lastSeenTs > 350) setStatus_("", "");
+        }, 180);
+      }
+
+      startScanLoop_();
+      setStatus_("", "✅ Sẵn sàng quét", "Canh mã QR nằm trong khung vuông");
+      showToast_("📷 CAMERA ON — QUÉT MÃ", "ok");
+
+    } catch(e){
+      // retry 1 lần như UI cũ
+      try{
+        await new Promise(r=>setTimeout(r, 250));
+        await openCameraOnce_();
+        cameraReady = true;
+        lastSeenTs = Date.now();
+
+        if (!liveClearLoop){
+          liveClearLoop = setInterval(() => {
+            if (!SCAN.running) return;
+            if (SCAN.inflight) return;
+            if (centerPopup.classList.contains("show")) return;
+            if (Date.now() - lastSeenTs > 350) setStatus_("", "");
+          }, 180);
+        }
+
+        startScanLoop_();
+        setStatus_("", "✅ Sẵn sàng quét", "Canh mã QR nằm trong khung vuông");
+        showToast_("📷 CAMERA ON — QUÉT MÃ", "ok");
+        return;
+
+      }catch(e2){
+        stopScan();
+        const name = String(e2?.name || e?.name || "UnknownError");
+        const msg  = String(e2?.message || e?.message || "No message");
+        setStatus_("err", "❌ Không mở được camera", `(${name}) ${msg}`);
+      }
+    }
+  }
+
+  function stopScan(){
+    cameraReady = false;
+    SCAN.running = false;
+    SCAN.inflight = false;
+    showPendingStop_();
+
+    hideCenterPopup();
+    toast.style.display = "none";
+
+    stopScanLoop_();
+    closeCamera_();
+
+    lockUI_(false);
+    setStatus_("", "⏹ Dừng camera.");
+
+    if (liveClearLoop){
+      clearInterval(liveClearLoop);
+      liveClearLoop = null;
+    }
+  }
+
+  window.startScan = startScan;
+  window.stopScan  = stopScan;
+
+  document.addEventListener("visibilitychange", ()=>{
+    if (document.hidden) {
+      try{ stopScan(); }catch(e){}
+    }
+  });
+  window.addEventListener("pagehide", ()=>{ stopScan(); });
+  window.addEventListener("beforeunload", ()=>{ stopScan(); });
+
+  // ===== onScan_: COMMIT rồi FETCH (GIỐNG UI CŨ) =====
+  function onScan_(productKey){
+    const pk = String(productKey||"").trim();
+    if (!pk){
+      inc_("err");
+      setStatus_("err","❌ LỖI","QR không có ProductKey");
+      vibErr_();
+      showToast_("❌ QR không hợp lệ", "err");
+      return;
+    }
+
+    const worker = String(wInfo.value||"").trim();
+    const step = String(stepSel.value||"").trim();
+
+    lockPk_(pk, PK_SHORT_LOCK_MS);
+
+    SCAN.inflight = true;
+    showPendingStart_();
+    setStatus_("", "📥 Đã nhận mã", pk);
+    try{ navigator.vibrate?.(15); }catch(e){}
+
+    clearTimeout(SCAN.phaseT);
+    SCAN.phaseT = setTimeout(() => {
+      if (SCAN.inflight) setStatus_("", "⏳ Đang kiểm tra…", pk);
+    }, 2000);
+
+    apiGet_({ action:"commit", productKey: pk, step, workerInfo: worker })
+      .then(c=>{
+        clearTimeout(SCAN.phaseT);
+        SCAN.phaseT = null;
+
+        SCAN.inflight = false;
+        showPendingStop_();
+
+        if (c && c.ok){
+          inc_("ok");
+          showCheck_();
+          vibOk_(); beepOk_();
+
+          lockPk_(pk, PK_OK_LOCK_MS);
+
+          // fetch temPrint giống UI cũ
+          return apiGet_({ action:"fetch", productKey: pk, step, workerInfo: worker })
+            .then(f=>{
+              if (f && f.ok){
+                renderTemCard_({
+                  pk,
+                  kind:"ok",
+                  temPrint: f.temPrint,
+                  doneBadges: f.doneBadges || c.doneBadges || []
+                });
+              }
+            })
+            .catch(_=>{});
+        }
+
+        const msg = String(c?.msg || "ERROR");
+        const isSkip = (c?.code === "SKIP");
+        if (isSkip){
+          inc_("skip");
+          setStatus_("skip", "⛔ ĐÃ QUÉT", pk);
+          lockPk_(pk, PK_SKIP_LOCK_MS);
+          return;
+        }
+
+        inc_("err");
+        setStatus_("err","❌ LỖI", msg);
+        vibErr_();
+        showToast_("⚠️ " + msg, "warn");
+      })
+      .catch(err=>{
+        clearTimeout(SCAN.phaseT);
+        SCAN.phaseT = null;
+
+        SCAN.inflight = false;
+        showPendingStop_();
+
+        inc_("err");
+        const msg = String(err?.message || "Unknown");
+        setStatus_("err","❌ LỖI", msg);
+        vibErr_();
+
+        showCenterPopup_("err", "❌ LỖI HỆ THỐNG", "\nKhông gửi được dữ liệu - QUÉT LẠI.");
+        lockPk_(pk, PK_TIMEOUT_LOCK_MS);
+      });
+  }
+</script>
+
+</body>
+</html>
