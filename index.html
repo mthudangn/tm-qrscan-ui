@@ -23,12 +23,12 @@
       --shadow:0 16px 40px rgba(2, 24, 43, .12);
       --radius:22px;
 
-      --base: clamp(22px, 5.0vw + 10px, 34px);
-      --h4:   clamp(18px, 3.6vw + 10px, 26px);
-      --btn:  clamp(22px, 5.0vw + 10px, 34px);
-
-      --pad:  clamp(16px, 3.2vw + 10px, 24px);
-      --gap:  clamp(14px, 2.8vw + 10px, 20px);
+      --base: clamp(16px, 1.6vw + 12px, 20px);
+      --h4:   clamp(15px, 1.2vw + 12px, 18px);
+      --btn:  clamp(16px, 1.6vw + 12px, 20px);
+      
+      --pad:  clamp(12px, 1.6vw + 10px, 16px);
+      --gap:  clamp(10px, 1.2vw + 8px, 14px);
 
       --glassA: rgba(255,255,255,.16);
       --glassB: rgba(255,255,255,.10);
@@ -1015,19 +1015,22 @@
   }
 
   async function openCameraOnce_(){
+    // Ưu tiên camera sau trước, KHÔNG dùng video:true ở try đầu
     const tries = [
-      { audio:false, video:true },
-      { audio:false, video:{ facingMode:"environment" } },
-      { audio:false, video:{ facingMode:{ ideal:"environment" } } },
+      { audio:false, video:{ facingMode:{ exact:"environment" } } },  // hard force (có thể fail trên vài máy)
+      { audio:false, video:{ facingMode:{ ideal:"environment" } } },  // soft force
+      { audio:false, video:{ facingMode:"environment" } },            // legacy
+      { audio:false, video:true },                                    // fallback cuối cùng thôi
     ];
+  
     let lastErr = null;
-
+  
     for (const constraints of tries){
       try{
         camStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = camStream;
         try { await video.play(); } catch(e){}
-
+  
         const t0 = Date.now();
         while ((!video.videoWidth || !video.videoHeight) && (Date.now() - t0 < 2000)) {
           await new Promise(r => setTimeout(r, 40));
