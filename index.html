@@ -799,15 +799,19 @@
       .replaceAll('"',"&quot;").replaceAll("'","&#39;");
   }
 
-  function extractProductKey_(text){
-    const t = String(text || "").trim();
-    if (!t) return "";
-    const m = t.match(/[?&](productKey|pk)=([^&#]+)/i);
-    if (m && m[2]) {
-      try { return decodeURIComponent(m[2]).trim(); }
-      catch(e){ return String(m[2]).trim(); }
+  function extractPkFromScanText(text){
+    const s = String(text || "").trim();
+    if (!s) return "";
+  
+    if (/^https?:\/\//i.test(s)) {
+      try {
+        const u = new URL(s);
+        const pk = u.searchParams.get("pk");
+        if (pk) return pk.trim();
+      } catch(e){}
     }
-    return t;
+  
+    return s;
   }
 
   function renderTemCard_(payload){
@@ -1088,7 +1092,7 @@
           if (now - SCAN.lastHitTs >= SCAN.cooldownMs) {
             SCAN.lastHitTs = now;
 
-            const pk = extractProductKey_(raw);
+            const pk = extractPkFromScanText(raw);
             if (pk){
               lastSeenTs = now;
               if (isLockedPk_(pk)) {
