@@ -458,6 +458,7 @@
     }
     .toast.ok{ background: linear-gradient(135deg, #16a34a, #22c55e); }
     .toast.err{ background: linear-gradient(135deg, #ef4444, #f97316); }
+    .toast.warn{ background: linear-gradient(135deg, #f59e0b, #f97316); }
 
     .scanResult{
       position:absolute;
@@ -630,7 +631,70 @@
 
 <script>
   // Copy webapp /exec link
-  const API_BASE = "https://script.google.com/macros/s/AKfycbw_jWTYVlIWe3arrp5OPX7PQEBUet9GSoCbLq3_d0Lr8k8BL5Tz9-z9nNS4dO11Xgs/exec";
+  // ✅ API_BASE: KHÔNG HARDCODE
+  // Cách set cho văn phòng:
+  // Mở link GitHub Pages dạng:
+  //   https://<your>.github.io/<repo>/?api=https://script.google.com/macros/s/XXXX/exec
+  // Trang sẽ tự lưu 30 ngày (localStorage)
+  const API_LS_KEY = "QR_API_BASE_EXEC_V1";
+  const API_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+  
+  function normalizeExecUrl_(url){
+    url = String(url || "").trim();
+    url = url.split("#")[0].split("?")[0];
+    url = url.replace(/\/dev$/i, "/exec");
+    url = url.replace(/\/+$/,"");
+    if (!/\/exec$/i.test(url)) url += "/exec";
+    return url;
+  }
+  
+  function loadApiBase_(){
+    // 1) ưu tiên query param ?api=...
+    const qs = new URLSearchParams(location.search);
+    const u1 = qs.get("api") || qs.get("exec") || qs.get("base") || "";
+    if (u1){
+      const u = normalizeExecUrl_(u1);
+      localStorage.setItem(API_LS_KEY, JSON.stringify({ url: u, ts: Date.now() }));
+      return u;
+    }
+  
+    // 2) fallback localStorage (30 ngày)
+    try{
+      const obj = JSON.parse(localStorage.getItem(API_LS_KEY) || "null");
+      if (!obj || !obj.url || !obj.ts) return "";
+      if (Date.now() - obj.ts > API_TTL_MS) { localStorage.removeItem(API_LS_KEY); return ""; }
+      return String(obj.url || "").trim();
+    }catch(e){
+      return "";
+    }
+  }
+  
+  const API_BASE = loadApiBase_();
+  if (!API_BASE){
+    // chặn luôn vì chưa có base url
+    setTimeout(() => {
+      showCenterPopup_(
+        "err",
+        "❌ CHƯA SET LINK /exec",
+        "Văn phòng cần mở link dạng:\n\n" +
+        "…/qrscan-ui/?api=https://script.google.com/macros/s/XXXX/exec\n\n" +
+        "Sau đó trang sẽ tự nhớ 30 ngày."
+      );
+    }, 200);
+  }
+  if (!API_BASE){
+    // disable toàn bộ thao tác scan khi chưa có base
+    window.addEventListener("DOMContentLoaded", () => {
+      try{
+        document.getElementById("btnStart").disabled = true;
+        document.getElementById("btnStop").disabled  = true;
+        document.getElementById("step").disabled     = true;
+        document.getElementById("wInfo").disabled    = true;
+        document.getElementById("statusBig").textContent =
+          "❌ Chưa có link /exec. Hãy bấm Open từ Sheet.";
+      }catch(e){}
+    });
+  }
 
   const btnStart = document.getElementById("btnStart");
   const btnStop  = document.getElementById("btnStop");
@@ -842,17 +906,26 @@
 
   // ===== API GET helper (avoid preflight) =====
   async function apiGet_(params){
+    if (!API_BASE) throw new Error("Missing API_BASE (/exec). Open from Sheet or use ?api=...");
     const u = new URL(API_BASE);
     for (const [k,v] of Object.entries(params || {})){
       if (v === undefined || v === null) continue;
       u.searchParams.set(k, String(v));
     }
-    const resp = await fetch(u.toString(), { method:"GET" });
+    // chống cache
+    u.searchParams.set("_ts", String(Date.now()));
+
+    const resp = await fetch(u.toString(), { method:"GET", cache:"no-store" });
     return await resp.json();
   }
 
-  // ===== load steps (equivalent to template) =====
+  // ===== load steps (guard when API_BASE missing) =====
   async function fetchAndPopulateSteps_(){
+    if (!API_BASE){
+      // không gọi API khi chưa có /exec
+      stepSel.innerHTML = '<option value="">--- Chưa set link /exec ---</option>';
+      return;
+    }
     try{
       stepSel.innerHTML = '<option value="">--- Đang tải công đoạn ---</option>';
       const j = await apiGet_({ action:"getSteps" });
@@ -1160,9 +1233,6 @@
         clearTimeout(SCAN.phaseT);
         SCAN.phaseT = null;
 
-        SCAN.inflight = false;
-        showPendingStop_();
-
         if (c && c.ok){
           inc_("ok");
           showCheck_();
@@ -1170,8 +1240,8 @@
 
           lockPk_(pk, PK_OK_LOCK_MS);
 
-          // fetch temPrint giống UI cũ
-          return apiGet_({ action:"fetch", productKey: pk, step, workerInfo: worker })
+          // giữ inflight cho tới khi fetchTem xong (tránh chồng scan)
+          return apiGet_({ action:"fetchTem", productKey: pk, step, workerInfo: worker })
             .then(f=>{
               if (f && f.ok){
                 renderTemCard_({
@@ -1182,8 +1252,16 @@
                 });
               }
             })
-            .catch(_=>{});
+            .catch(_=>{})
+            .finally(()=>{
+              SCAN.inflight = false;
+              showPendingStop_();
+            });
         }
+
+        // non-ok case
+        SCAN.inflight = false;
+        showPendingStop_();
 
         const msg = String(c?.msg || "ERROR");
         const isSkip = (c?.code === "SKIP");
