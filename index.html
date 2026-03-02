@@ -929,14 +929,22 @@
     try{
       stepSel.innerHTML = '<option value="">--- Đang tải công đoạn ---</option>';
       const j = await apiGet_({ action:"getSteps" });
-      if (!j || !j.ok || !Array.isArray(j.steps)) throw new Error("Invalid JSON");
-
+      if (!j || !j.ok || !j.steps) throw new Error("Invalid JSON");
+      
       stepSel.innerHTML = '<option value="">--- Chọn công đoạn ---</option>';
-      // accept: steps = ["S1",...] OR [{id,label},...]
-      for (const it of j.steps){
-        const id = (typeof it === "string") ? it : (it.id || "");
-        const label = (typeof it === "string") ? it : (it.label || it.id || "");
+
+      // accept steps as:
+      // 1) array: ["GTAM", ...] OR [{id,label}, ...]
+      // 2) object map: { GTAM:"🤎 GIẤY TẤM", CAN:"💗 CÁN", ... }
+      const arr = Array.isArray(j.steps)
+        ? j.steps
+        : Object.keys(j.steps || {}).map(k => ({ id: k, label: j.steps[k] }));
+
+      for (const it of arr){
+        const id = (typeof it === "string") ? it : (it.id || it.step || it.value || "");
+        const label = (typeof it === "string") ? it : (it.label || it.name || it.title || it.id || "");
         if (!id) continue;
+
         const opt = document.createElement("option");
         opt.value = String(id);
         opt.textContent = String(label);
