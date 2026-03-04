@@ -123,9 +123,9 @@
 
     input, select{
       width:100%;
-      padding: 22px 18px;
+      padding:16px 14px;
       border:1px solid rgba(242,236,234,.95);
-      border-radius:20px;
+      border-radius:16px;
       font-size: var(--base);
       outline:none;
       background:#fff;
@@ -141,10 +141,14 @@
     .grid2{
       display:grid;
       gap: var(--gap);
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1.7fr;
+      align-items:end;
     }
-    @media (min-width:820px){
-      .grid2{ grid-template-columns: .85fr 1.15fr; }
+    
+    @media (max-width:520px){
+      .grid2{
+        grid-template-columns: 1fr 1.9fr;
+      }
     }
 
     .hint{
@@ -281,13 +285,16 @@
     }
 
     .camWrap{
-      border-radius:20px;
+      border-radius:18px;
       overflow:hidden;
       background:#000;
       position:relative;
       border:2px solid rgba(255,255,255,.25);
-      aspect-ratio: 1 / 1;
-      width: 100%;
+    
+      width:100%;
+      max-width:420px;
+      margin:0 auto;
+      aspect-ratio:4 / 3;
     }
     .camWrap video{
       width:100%;
@@ -302,7 +309,7 @@
       pointer-events:none;
     }
     .box{
-      width:min(86vw, 460px);
+      width:min(78%, 320px);
       aspect-ratio:1/1;
       border-radius:20px;
       border:3px solid rgba(255,255,255,.78);
@@ -359,18 +366,17 @@
     }
     .temCard{
       scroll-snap-align:start;
-      min-width: 94%;
-      max-width: 680px;
-      border-radius:20px;
+      min-width:86%;
+      max-width:520px;
+      border-radius:18px;
       border:2px solid rgba(15,23,42,.12);
       background:#fff;
-      padding:16px;
-      box-shadow:0 10px 24px rgba(2,24,43,.08);
+      padding:12px;
+      box-shadow:0 8px 18px rgba(2,24,43,.07);
     }
     .temCard.ok{ border-color: rgba(64,210,204,.55); }
     .temCard.skip{ border-color: rgba(255,143,122,.55); }
     .temCard.err{ border-color: rgba(239,68,68,.55); }
-
     .temBox{
       border:2px solid rgba(15,23,42,.22);
       border-radius:16px;
@@ -388,7 +394,7 @@
       border-top: 2px dashed rgba(15,23,42,.28);
     }
     .temL1{ font-weight:900; font-size: calc(var(--base) * .80); opacity:.92; }
-    .temL2{ font-weight:500; font-size: clamp(38px, 6.0vw + 18px, 56px); letter-spacing:.6px; }
+    .temL2{ font-weight:700; font-size: clamp(26px, 4.2vw + 10px, 34px); }
     .temL3{ font-weight:500; font-size: calc(var(--base) * .92); }
     .temL4{ font-weight:1000; font-size: clamp(28px, 4.2vw + 16px, 40px); }
     .temL5{ font-weight:500; font-size: calc(var(--base) * .92); opacity:.95; }
