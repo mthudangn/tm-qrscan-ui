@@ -795,7 +795,7 @@
 <div class="wrap">
   <div class="top">
     <div class="t1">QR SCAN MODE</div>
-    <div class="t2">Hướng dẫn báo cáo: Chọn công đoạn → Bật camera → Quét mã liên tục</div>
+    <div class="t2">📍 Chọn công đoạn → Bật camera → Quét mã liên tục</div>
   </div>
 
   <div class="card">
@@ -808,9 +808,9 @@
       </div>
 
       <div>
-        <label for="step">Công đoạn (chọn 1)</label>
+        <label for="step">Công đoạn</label>
         <select id="step">
-          <option value="">--- Đang tải công đoạn ---</option>
+          <option value="">Loading..</option>
         </select>
       </div>
     </div>
@@ -830,7 +830,7 @@
     </div>
     
     <div id="statusBig" class="statusBig" style="margin-top:12px;">
-      Sẵn sàng! Chọn công đoạn + bấm “Bắt đầu quét”
+      🔔 Chuẩn bị camera + Canh mã trong khung
     </div>
   </div>
 
@@ -1203,11 +1203,11 @@
       return;
     }
     try{
-      stepSel.innerHTML = '<option value="">--- Đang tải công đoạn ---</option>';
+      stepSel.innerHTML = '<option value="">Loading..</option>';
       const j = await apiGet_({ action:"getSteps" });
       if (!j || !j.ok || !j.steps) throw new Error("Invalid JSON");
       
-      stepSel.innerHTML = '<option value="">--- Chọn công đoạn ---</option>';
+      stepSel.innerHTML = '<option value="">Chọn 1 công đoạn</option>';
 
       // accept steps as:
       // 1) array: ["GTAM", ...] OR [{id,label}, ...]
@@ -1228,7 +1228,7 @@
       }
     }catch(err){
       console.error(err);
-      stepSel.innerHTML = '<option value="">--- Không tải được (bấm để thử lại) ---</option>';
+      stepSel.innerHTML = '<option value="">Bấm để tải lại</option>';
       stepSel.addEventListener("click", fetchAndPopulateSteps_, { once:true });
     }
   }
