@@ -1407,7 +1407,7 @@
     showPendingStop_();
 
     hideCenterPopup();
-    toast.style.display = "none";
+    toast.classList.remove("show");
 
     stopScanLoop_();
     closeCamera_();
