@@ -336,30 +336,36 @@
     }
     
     .playBtn{
-      width:86px;
-      height:86px;
-      border-radius:999px;
-      border:2px solid rgba(255,255,255,.55);
-      background: rgba(15,23,42,.35);
-      -webkit-backdrop-filter: blur(8px) saturate(140%);
-      backdrop-filter: blur(8px) saturate(140%);
-      box-shadow: 0 18px 44px rgba(2,24,43,.28);
-      cursor:pointer;
+      width: 92px;
+      height: 92px;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+      cursor: pointer;
+    
       display:flex;
       align-items:center;
       justify-content:center;
+    
       -webkit-tap-highlight-color: transparent;
     }
     
     .playBtn:active{ transform: scale(.98); }
     
     .playBtn svg{
-      width:34px;
-      height:34px;
-      transform: translateX(2px);
-      fill: rgba(255,255,255,.92);
+      width: 66px;
+      height: 66px;
+      fill: rgba(255,255,255,.94);
+      filter: drop-shadow(0 10px 22px rgba(0,0,0,.35));
     }
-    
+    .btnStop{
+      min-height: 64px;
+      padding: 0 18px !important;
+      line-height: 1.1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
     /* Khi đang scan thì ẩn nút play */
     .camWrap.scanning .playOverlay{ display:none; }
     
@@ -523,8 +529,8 @@
     .toast{
       position:fixed;
       left:50%;
-      top: calc(10px + env(safe-area-inset-top));
-      transform: translate(-50%, -14px) scale(.96);
+      top: var(--toastY, 50%);
+      transform: translate(-50%, -50%) scale(.96);
     
       z-index:999;
     
@@ -566,7 +572,7 @@
     .toast.show{
       opacity:1;
       pointer-events:none;
-      transform: translate(-50%, 0) scale(1);
+      transform: translate(-50%, -50%) scale(1);
     }
     
     /* expanded state giống Dynamic Island */
@@ -777,7 +783,7 @@
   <div class="card scanPanel" id="scanCard">
     <h4>📸 Camera</h4>
 
-    <div class="camWrap">
+    <div class="camWrap" id="camWrap">
       <video id="video" playsinline muted autoplay></video>
       <div class="overlay"><div class="box"></div></div>
 
@@ -971,7 +977,7 @@
     statusBig.className = "statusBig" + (kind ? (" " + kind) : "");
     statusBig.textContent = sub ? `${title} — ${sub}` : title;
   }
-
+  
   function showToast_(msg, kind, opts){
     if (kind === "err"){
       showCenterPopup_("err", "❌ LỖI", msg);
@@ -1347,6 +1353,7 @@
       await openCameraOnce_();
       cameraReady = true;
       lastSeenTs = Date.now();
+      camWrapEl?.classList.add("scanning");
 
       if (!liveClearLoop){
         liveClearLoop = setInterval(() => {
