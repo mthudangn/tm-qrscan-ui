@@ -522,24 +522,69 @@
     .toast{
       position:fixed;
       left:50%;
-      transform:translateX(-50%);
-      bottom:max(16px, env(safe-area-inset-bottom));
-      background:#0F172A;
+      bottom:calc(18px + env(safe-area-inset-bottom));
+      transform:translate(-50%,20px);
+      
+      display:flex;
+      align-items:center;
+      gap:10px;
+    
+      padding:12px 16px;
+      border-radius:16px;
+    
+      font-size: calc(var(--base) * .82);
+      font-weight:900;
+    
       color:#fff;
-      border-radius:999px;
-      font-size: calc(var(--base) * .80);
-      padding:18px 20px;
-      box-shadow:var(--shadow);
-      display:none;
-      max-width:92vw;
-      z-index:99;
-      font-weight:1200;
-      text-align:center;
-      white-space: pre-line;
+    
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+    
+      background: rgba(15,23,42,.82);
+    
+      border:1px solid rgba(255,255,255,.15);
+    
+      box-shadow:
+        0 12px 30px rgba(0,0,0,.35),
+        inset 0 1px 0 rgba(255,255,255,.15);
+    
+      opacity:0;
+      pointer-events:none;
+    
+      transition:
+        transform .25s cubic-bezier(.2,.9,.2,1),
+        opacity .22s ease;
+    
+      z-index:999;
     }
-    .toast.ok{ background: linear-gradient(135deg, #16a34a, #22c55e); }
-    .toast.err{ background: linear-gradient(135deg, #ef4444, #f97316); }
-    .toast.warn{ background: linear-gradient(135deg, #f59e0b, #f97316); }
+    
+    .toast.show{
+      opacity:1;
+      transform:translate(-50%,0);
+    }
+    
+    .toast.ok{
+      background:
+        linear-gradient(135deg,#16a34a,#22c55e);
+    }
+    
+    .toast.warn{
+      background:
+        linear-gradient(135deg,#f59e0b,#f97316);
+    }
+    
+    .toast.err{
+      background:
+        linear-gradient(135deg,#ef4444,#f43f5e);
+    }
+    
+    .toastIcon{
+      font-size:18px;
+    }
+    
+    .toastText{
+      line-height:1.25;
+    }
 
     .scanResult{
       position:absolute;
@@ -870,16 +915,25 @@
       showCenterPopup_("err", "❌ LỖI", msg);
       return;
     }
+  
     const o = opts || {};
     const sticky = !!o.sticky;
-
-    toast.className = "toast" + (kind ? (" " + kind) : "");
-    toast.style.display = "block";
-    toast.textContent = String(msg || "");
-
+  
+    toast.className = "toast show" + (kind ? (" " + kind) : "");
+  
+    toast.innerHTML = `
+      <span class="toastIcon">
+        ${kind==="ok" ? "✔️" : kind==="warn" ? "⚠️" : "ℹ️"}
+      </span>
+      <span class="toastText">${msg}</span>
+    `;
+  
     clearTimeout(showToast_._t);
+  
     if (!sticky){
-      showToast_._t = setTimeout(()=>toast.style.display="none", 1200);
+      showToast_._t = setTimeout(()=>{
+        toast.classList.remove("show");
+      }, 1400);
     }
   }
 
@@ -1243,7 +1297,7 @@
 
       startScanLoop_();
       setStatus_("", "✅ Sẵn sàng quét", "Canh mã QR nằm trong khung vuông");
-      showToast_("📷 CAMERA ON — QUÉT MÃ", "ok");
+      showToast_("📷 CAMERA ON — BẮT ĐẦU QUÉT MÃ", "ok");
       document.getElementById("scanCard")?.scrollIntoView({ behavior:"smooth", block:"start" });
 
     } catch(e){
