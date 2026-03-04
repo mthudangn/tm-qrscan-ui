@@ -500,15 +500,20 @@
       padding:0;
       overflow:hidden;
       background:#fff;
+      font-family: "Helvetica Neue", Arial, sans-serif;
     }
     .temLine{
       text-align:center;
+      display:flex;
+      align-items:center;      /* middle */
+      justify-content:center;  /* center */
       padding:10px 10px;
+      min-height:38px;
       line-height:1.15;
       white-space:pre-line;
     }
     .temLine + .temLine{
-      border-top: 2px dashed rgba(15,23,42,.28);
+      border-top: 2px solid rgba(15,23,42,.22);
     }
     
     /* ===== TEM font scale (giống sheet) ===== */
@@ -518,7 +523,8 @@
     }
     .temL2{
       font-weight:1000;
-      font-size: clamp(26px, 4.4vw + 10px, 36px); 
+      letter-spacing:.5px;
+      font-size: clamp(28px, 4.6vw + 10px, 38px);
     }
     .temL3{
       font-weight:600;
@@ -536,11 +542,9 @@
       font-weight:900;
       font-size: calc(var(--base) * .72);
       display:flex;
+      align-items:center; /* middle */
       justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      padding-left:16px;
-      padding-right:16px;
+      padding:10px 16px;
     }
     .temL6 .left{ text-align:left; min-width: 90px; }
     .temL6 .right{ text-align:right; margin-left:auto; }
@@ -1091,16 +1095,21 @@
     if (String(kind || "").toLowerCase() !== "ok") return;
 
     const l1 = temPrint?.l1 || "";
-    const l2 = temPrint?.l2 || (pk || "");
+    const l2 = temPrint?.l2 || "";
     const l3 = temPrint?.l3 || "";
     const l4 = temPrint?.l4 || "";
     const l5 = temPrint?.l5 || "";
 
     const rawL7 = String(temPrint?.l7 || "").trim();
-    let khgh = "", stt = "";
-    const m = rawL7.match(/^(\d{2}\/\d{2})\s+(.+)$/);
-    if (m) { khgh = m[1] || ""; stt = String(m[2] || "").trim(); }
-    else { stt = rawL7; }
+    let khgh = "";
+    let stt  = "";
+    if (rawL7.includes(" ")) {
+      const parts = rawL7.split(/\s+/);
+      khgh = parts[0] || "";
+      stt  = parts.slice(1).join(" ");
+    } else {
+      stt = rawL7;
+    }
 
     const meta = temPrint?.meta || {};
     const stepLabel = meta.stepLabel || "";
@@ -1377,7 +1386,7 @@
       } catch(e){
         const msg = String(e?.message || "");
         if (!/No QR code found|No QR code|NotFound/i.test(msg)) {
-          setStatus_("err", "⚠️ LỖI SCAN", "Canh lại mã / lau camera");
+          setStatus_("err", "⚠️ LỖI - Canh mã trong khung / lau camera");
           console.warn("SCAN_ERR:", msg || e);
         }
       }
@@ -1419,7 +1428,8 @@
           if (!SCAN.running) return;
           if (SCAN.inflight) return;
           if (centerPopup.classList.contains("show")) return;
-          if (Date.now() - lastSeenTs > 350) setStatus_("", "");
+          if (Date.now() - lastSeenTs > 350 && !SCAN.inflight)
+            setStatus_("", "");
         }, 180);
       }
 
@@ -1473,7 +1483,7 @@
     camWrapEl?.classList.remove("scanning");
 
     lockUI_(false);
-    setStatus_("", "⏹ Dừng camera.");
+    setStatus_("", "⏹ Đã dừng camera");
 
     if (liveClearLoop){
       clearInterval(liveClearLoop);
@@ -1510,13 +1520,8 @@
 
     SCAN.inflight = true;
     showPendingStart_();
-    setStatus_("", "📥 Đã nhận mã", pk);
+    setStatus_("", "⏳ Đang nhận mã… " + shortTem_(pk));
     try{ navigator.vibrate?.(15); }catch(e){}
-
-    clearTimeout(SCAN.phaseT);
-    SCAN.phaseT = setTimeout(() => {
-      if (SCAN.inflight) setStatus_("", "⏳ Đang kiểm tra…" + shortTem_(pk));
-    }, 2000);
 
     apiGet_({ action:"commit", productKey: pk, step, workerInfo: worker })
       .then(c=>{
