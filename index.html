@@ -290,11 +290,11 @@
       background:#000;
       position:relative;
       border:2px solid rgba(255,255,255,.25);
-    
       width:100%;
-      max-width:420px;
+      max-width:360px;
       margin:0 auto;
       aspect-ratio:4 / 3;
+      height:260px;
     }
     .camWrap video{
       width:100%;
@@ -309,13 +309,12 @@
       pointer-events:none;
     }
     .box{
-      width:min(78%, 320px);
+      width:min(64%, 240px);
       aspect-ratio:1/1;
-      border-radius:20px;
-      border:3px solid rgba(255,255,255,.78);
+      border-radius:18px;
+      border:3px solid rgba(255,255,255,.82);
       box-shadow:0 0 0 999px rgba(0,0,0,.18);
     }
-
     .statusBig{
       margin-top: var(--gap);
       padding: 16px 18px;
@@ -335,7 +334,9 @@
       background:#fff;
       border:2px solid rgba(15,23,42,.08);
       border-radius:20px;
-      padding: 16px;
+      padding:12px;
+      max-height:260px;
+      overflow:auto;
     }
     .temTitleRow{
       display:flex;
@@ -366,13 +367,13 @@
     }
     .temCard{
       scroll-snap-align:start;
-      min-width:86%;
-      max-width:520px;
-      border-radius:18px;
+      min-width:72%;
+      max-width:420px;
+      border-radius:16px;
       border:2px solid rgba(15,23,42,.12);
       background:#fff;
-      padding:12px;
-      box-shadow:0 8px 18px rgba(2,24,43,.07);
+      padding:10px;
+      box-shadow:0 6px 14px rgba(2,24,43,.06);
     }
     .temCard.ok{ border-color: rgba(64,210,204,.55); }
     .temCard.skip{ border-color: rgba(255,143,122,.55); }
@@ -394,9 +395,9 @@
       border-top: 2px dashed rgba(15,23,42,.28);
     }
     .temL1{ font-weight:900; font-size: calc(var(--base) * .80); opacity:.92; }
-    .temL2{ font-weight:700; font-size: clamp(26px, 4.2vw + 10px, 34px); }
+    .temL2{ font-weight:700; font-size: clamp(20px, 3.2vw + 8px, 26px); }
     .temL3{ font-weight:500; font-size: calc(var(--base) * .92); }
-    .temL4{ font-weight:1000; font-size: clamp(28px, 4.2vw + 16px, 40px); }
+    .temL4{ font-weight:1000; font-size: clamp(22px, 3.5vw + 10px, 30px); }
     .temL5{ font-weight:500; font-size: calc(var(--base) * .92); opacity:.95; }
 
     .temL7{
@@ -1071,7 +1072,7 @@
   function startScanLoop_(){
     scanLoopOn = true;
 
-    const LOOP_MS = 90;
+    const LOOP_MS = 70;
     async function tick(){
       if (!scanLoopOn || !SCAN.running) return;
 
