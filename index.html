@@ -834,7 +834,7 @@
     </div>
     
     <div id="statusBig" class="statusBig" style="margin-top:12px;">
-      🔔 Chuẩn bị camera + Canh mã trong khung
+      🔔 Bật camera + Canh mã trong khung
     </div>
   </div>
 
@@ -871,7 +871,7 @@
 
     <div class="temWrap">
       <div class="temTitleRow">
-        <div class="left">Những mã TEM bạn đã quét thành công (quẹt ngang để xem)</div>
+        <div class="left">List mã TEM bạn quét thành công</div>
         <div class="right" id="temHint">Chưa có</div>
       </div>
       <div class="temRow" id="temRow"></div>
@@ -890,7 +890,7 @@
 
 <script>
   // Copy webapp /exec link
-  // ✅ API_BASE: KHÔNG HARDCODE
+  // API_BASE: KHÔNG HARDCODE
   // Cách set cho văn phòng:
   // Mở link GitHub Pages dạng:
   //   https://<your>.github.io/<repo>/?api=https://script.google.com/macros/s/XXXX/exec
@@ -1157,7 +1157,7 @@
     temRow.appendChild(card);
     while (temRow.children.length > 50) temRow.removeChild(temRow.firstChild);
 
-    temHint.textContent = "Kéo ngang để xem";
+    temHint.textContent = "Quẹt ngang để xem";
     temRow.scrollTo({ left: temRow.scrollWidth, behavior: "smooth" });
   }
 
