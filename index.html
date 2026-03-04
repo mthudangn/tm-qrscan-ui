@@ -513,7 +513,7 @@
       white-space:pre-line;
     }
     .temLine + .temLine{
-      border-top: 2px solid rgba(15,23,42,.22);
+      border-top: 2px dashed rgba(15,23,42,.18);
     }
     
     /* ===== TEM font scale (giống sheet) ===== */
@@ -524,7 +524,7 @@
     .temL2{
       font-weight:1000;
       letter-spacing:.5px;
-      font-size: clamp(28px, 4.6vw + 10px, 38px);
+      font-size: clamp(24px, 4.1vw + 9px, 34px);
     }
     .temL3{
       font-weight:600;
@@ -592,7 +592,6 @@
       /* “island pill” */
       display:flex;
       align-items:center;
-      gap:10px;
     
       max-width: min(92vw, 560px);
       padding: 10px 14px;
@@ -1053,12 +1052,7 @@
   
     toast.className = "toast show" + (kind ? (" " + kind) : "");
   
-    toast.innerHTML = `
-      <span class="toastIcon">
-        ${kind==="ok" ? "✔️" : kind==="warn" ? "⚠️" : "ℹ️"}
-      </span>
-      <span class="toastText">${msg}</span>
-    `;
+    toast.innerHTML = `<span class="toastText">${msg}</span>`;
   
     clearTimeout(showToast_._t);
   
@@ -1135,8 +1129,7 @@
 
       <div class="temFooter">
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          ${stepLabel ? `<span class="temTag">${escapeHtml_(stepLabel)}</span>` : ``}
-          ${today ? `<span class="temTag">Ngày: ${escapeHtml_(today)}</span>` : ``}
+          ${today ? `<span class="temTag">📋 ${escapeHtml_(today)}</span>` : ``}
         </div>
       </div>
 
