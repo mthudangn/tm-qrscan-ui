@@ -761,7 +761,6 @@
         <select id="step">
           <option value="">--- Đang tải công đoạn ---</option>
         </select>
-        <div class="hint">Quét từng mã cho công đoạn này.</div>
       </div>
     </div>
 
@@ -948,7 +947,7 @@
 
   function showCenterPopup_(kind, title, msg){
     errorPopupOpen = true;
-    toast.style.display = "none";
+    toast.classList.remove("show");
     centerPopup.className = "centerPopup show" + (kind ? (" " + kind) : "");
     popupTitle.textContent = title || "";
     popupMsg.textContent = msg || "";
