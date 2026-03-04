@@ -169,6 +169,13 @@
       justify-content:center;
       gap:10px;
     }
+
+    .statRow{
+      margin-top:12px;
+      display:grid;
+      gap:12px;
+      grid-template-columns: 1fr 1fr 1.35fr;
+    }
     
     .stopTile{
       border:none;
@@ -400,6 +407,12 @@
       min-height: 64px;
       padding: 0 18px !important;
       line-height: 1.1;
+    
+      /* NEW: chữ to + đậm hơn */
+      font-size: 20px;
+      font-weight: 1000;
+      letter-spacing: .3px;
+    
       display:flex;
       align-items:center;
       justify-content:center;
@@ -802,16 +815,18 @@
       </div>
     </div>
 
-    <div style="margin-top:12px; display:grid; gap:12px; grid-template-columns: 1fr 1fr 1.35fr;">
-      <div class="miniStat">OK <b id="okC">0</b></div>
-      <div class="miniStat">SKIP <b id="skipC">0</b></div>
+    <div class="statRow">
+      <div class="miniStat">
+        OK <b id="okC">0</b>
+      </div>
+      
+      <div class="miniStat">
+        SKIP <b id="skipC">0</b>
+      </div>
     
       <button id="btnStop" class="stopTile" onclick="stopScan()" disabled>
         STOP 📸
       </button>
-    
-      <!-- giữ errC để JS inc_ vẫn chạy (ẩn đi) -->
-      <span id="errC" style="display:none;">0</span>
     </div>
     
     <div id="statusBig" class="statusBig" style="margin-top:12px;">
@@ -949,7 +964,6 @@
 
   const okC   = document.getElementById("okC");
   const skipC = document.getElementById("skipC");
-  const errC  = document.getElementById("errC");
 
   const temRow  = document.getElementById("temRow");
   const temHint = document.getElementById("temHint");
@@ -1251,7 +1265,6 @@
     SCAN[k] = (SCAN[k]||0) + 1;
     okC.textContent = String(SCAN.ok);
     skipC.textContent = String(SCAN.skip);
-    errC.textContent = String(SCAN.err);
   }
 
   function lockUI_(on){
@@ -1354,7 +1367,7 @@
             if (pk){
               lastSeenTs = now;
               if (isLockedPk_(pk)) {
-                setStatus_("skip", "⛔ ĐÃ QUÉT" + shortTem_(pk));
+                setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(pk));
               } else {
                 onScan_(pk);
               }
@@ -1544,7 +1557,7 @@
         const isSkip = (c?.code === "SKIP");
         if (isSkip){
           inc_("skip");
-          setStatus_("skip", "⛔ ĐÃ QUÉT" + shortTem_(pk));
+          setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(pk));
           lockPk_(pk, PK_SKIP_LOCK_MS);
           return;
         }
