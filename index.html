@@ -803,8 +803,8 @@
 
     <div class="grid2">
       <div>
-        <label for="wInfo">Email / Tên / SĐT</label>
-        <input id="wInfo" type="text" inputmode="text" placeholder="Ví dụ: trongthanh@gmail.com hoặc Thành">
+        <label for="wInfo">Tên / SĐT</label>
+        <input id="wInfo" type="text" inputmode="text" placeholder="Ví dụ: Thanh">
       </div>
 
       <div>
@@ -867,7 +867,7 @@
 
     <div class="temWrap">
       <div class="temTitleRow">
-        <div class="left">Mã TEM bạn đã quét thành công (kéo ngang để xem)</div>
+        <div class="left">Những mã TEM bạn đã quét thành công (quẹt ngang để xem)</div>
         <div class="right" id="temHint">Chưa có</div>
       </div>
       <div class="temRow" id="temRow"></div>
@@ -1207,7 +1207,7 @@
       const j = await apiGet_({ action:"getSteps" });
       if (!j || !j.ok || !j.steps) throw new Error("Invalid JSON");
       
-      stepSel.innerHTML = '<option value="">Chọn 1 công đoạn</option>';
+      stepSel.innerHTML = '<option value="">-- Chọn 1 công đoạn --</option>';
 
       // accept steps as:
       // 1) array: ["GTAM", ...] OR [{id,label}, ...]
