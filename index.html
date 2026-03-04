@@ -336,7 +336,7 @@
       border-radius:20px;
       padding:12px;
       max-height:260px;
-      overflow:auto;
+      overflow:hidden;
     }
     .temTitleRow{
       display:flex;
@@ -361,6 +361,7 @@
       display:flex;
       gap:12px;
       overflow-x:auto;
+      overflow-y:hidden;
       scroll-snap-type:x mandatory;
       padding-bottom:6px;
       -webkit-overflow-scrolling: touch;
@@ -394,22 +395,36 @@
     .temLine + .temLine{
       border-top: 2px dashed rgba(15,23,42,.28);
     }
-    .temL1{ font-weight:900; font-size: calc(var(--base) * .80); opacity:.92; }
-    .temL2{ font-weight:700; font-size: clamp(20px, 3.2vw + 8px, 26px); }
-    .temL3{ font-weight:500; font-size: calc(var(--base) * .92); }
-    .temL4{ font-weight:1000; font-size: clamp(22px, 3.5vw + 10px, 30px); }
-    .temL5{ font-weight:500; font-size: calc(var(--base) * .92); opacity:.95; }
-
+    /* ===== TEM font scale (giống sheet) ===== */
+    .temL1{
+      font-weight:900;
+      font-size: clamp(15px, 2.2vw + 7px, 18px);  /* to hơn chút */
+    }
+    .temL2{
+      font-weight:900;
+      font-size: clamp(24px, 4.0vw + 10px, 32px); /* vẫn là dòng lớn nhất */
+    }
+    .temL3{
+      font-weight:600;
+      font-size: clamp(14px, 2.2vw + 6px, 17px);
+    }
+    .temL4{
+      font-weight:900;
+      font-size: clamp(18px, 3.0vw + 8px, 24px); 
+    }
+    .temL5{
+      font-weight:600;
+      font-size: clamp(14px, 2.1vw + 6px, 17px);
+    }
     .temL7{
       font-weight:900;
       font-size: calc(var(--base) * .72);
-      letter-spacing:.2px;
       display:flex;
       justify-content:space-between;
       align-items:center;
       gap:12px;
-      padding-left:14px;
-      padding-right:14px;
+      padding-left:16px;
+      padding-right:16px;
     }
     .temL7 .left{ text-align:left; min-width: 90px; }
     .temL7 .right{ text-align:right; margin-left:auto; }
@@ -588,9 +603,12 @@
       <div class="card" style="padding:12px;border-radius:16px;background:#fff;">SKIP <b id="skipC">0</b></div>
       <div class="card" style="padding:12px;border-radius:16px;background:#fff;">ERROR <b id="errC">0</b></div>
     </div>
+    <div id="statusBig" class="statusBig" style="margin-top:12px;">
+      Sẵn sàng! Chọn công đoạn + bấm “Bắt đầu quét”
+    </div>
   </div>
 
-  <div class="card">
+  <div class="card scanPanel" id="scanCard">
     <h4>📸 Camera</h4>
 
     <div class="camWrap">
@@ -611,10 +629,6 @@
           <button class="popupBtn" onclick="hideCenterPopup()">OK</button>
         </div>
       </div>
-    </div>
-
-    <div id="statusBig" class="statusBig" style="margin-top:14px;">
-      Sẵn sàng! Chọn công đoạn + bấm “Bắt đầu quét”
     </div>
 
     <div class="temWrap">
@@ -1160,6 +1174,7 @@
       startScanLoop_();
       setStatus_("", "✅ Sẵn sàng quét", "Canh mã QR nằm trong khung vuông");
       showToast_("📷 CAMERA ON — QUÉT MÃ", "ok");
+      document.getElementById("scanCard")?.scrollIntoView({ behavior:"smooth", block:"start" });
 
     } catch(e){
       // retry 1 lần như UI cũ
