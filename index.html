@@ -283,7 +283,19 @@
     @media (prefers-reduced-motion: reduce){
       .btn, .btn::before, .btn::after{ transition:none !important; animation:none !important; }
     }
-
+    
+    /* ===== scan panel: camera + tem luôn vừa 1 màn hình ===== */
+    .scanPanel{
+      min-height: calc(100svh - (var(--pad) * 2) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      display:flex;
+      flex-direction:column;
+    }
+    .scanPanel .temWrap{
+      flex: 1;
+      min-height: 0;
+    }
+    
+    /* ===== CAMERA ===== */
     .camWrap{
       border-radius:18px;
       overflow:hidden;
@@ -293,8 +305,7 @@
       width:100%;
       max-width:360px;
       margin:0 auto;
-      aspect-ratio:4 / 3;
-      height:260px;
+      height: 240px;
     }
     .camWrap video{
       width:100%;
@@ -315,29 +326,72 @@
       border:3px solid rgba(255,255,255,.82);
       box-shadow:0 0 0 999px rgba(0,0,0,.18);
     }
+    .playOverlay{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:12;
+    }
+    
+    .playBtn{
+      width:86px;
+      height:86px;
+      border-radius:999px;
+      border:2px solid rgba(255,255,255,.55);
+      background: rgba(15,23,42,.35);
+      -webkit-backdrop-filter: blur(8px) saturate(140%);
+      backdrop-filter: blur(8px) saturate(140%);
+      box-shadow: 0 18px 44px rgba(2,24,43,.28);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .playBtn:active{ transform: scale(.98); }
+    
+    .playBtn svg{
+      width:34px;
+      height:34px;
+      transform: translateX(2px);
+      fill: rgba(255,255,255,.92);
+    }
+    
+    /* Khi đang scan thì ẩn nút play */
+    .camWrap.scanning .playOverlay{ display:none; }
+    
+    /* ===== STATUS: cố định size, không nhảy dập ===== */
     .statusBig{
       margin-top: var(--gap);
-      padding: 16px 18px;
+      padding: 14px 16px;
       border-radius:18px;
       background:#fff;
       border:2px solid rgba(15,23,42,.08);
       font-weight:1000;
       line-height:1.2;
       font-size: calc(var(--base) * .95);
+      min-height: 64px;
+      max-height: 64px;
+      overflow:hidden;
+      display:-webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
     .statusBig.ok{ border-color: rgba(64,210,204,.85); }
     .statusBig.skip{ border-color: rgba(255,143,122,.80); }
     .statusBig.err{ border-color: rgba(239,68,68,.65); }
-
     .temWrap{
       margin-top: var(--gap);
       background:#fff;
       border:2px solid rgba(15,23,42,.08);
       border-radius:20px;
       padding:12px;
-      max-height:260px;
       overflow:hidden;
     }
+    
     .temTitleRow{
       display:flex;
       align-items:center;
@@ -358,18 +412,21 @@
       white-space:nowrap;
     }
     .temRow{
+      height: calc(100% - 44px);
       display:flex;
       gap:12px;
+    
       overflow-x:auto;
       overflow-y:hidden;
       scroll-snap-type:x mandatory;
       padding-bottom:6px;
       -webkit-overflow-scrolling: touch;
     }
+    
     .temCard{
       scroll-snap-align:start;
-      min-width:72%;
-      max-width:420px;
+      min-width:86%;
+      max-width:520px;
       border-radius:16px;
       border:2px solid rgba(15,23,42,.12);
       background:#fff;
@@ -379,6 +436,7 @@
     .temCard.ok{ border-color: rgba(64,210,204,.55); }
     .temCard.skip{ border-color: rgba(255,143,122,.55); }
     .temCard.err{ border-color: rgba(239,68,68,.55); }
+    
     .temBox{
       border:2px solid rgba(15,23,42,.22);
       border-radius:16px;
@@ -388,33 +446,34 @@
     }
     .temLine{
       text-align:center;
-      padding:12px 12px;
+      padding:10px 10px;
       line-height:1.15;
       white-space:pre-line;
     }
     .temLine + .temLine{
       border-top: 2px dashed rgba(15,23,42,.28);
     }
+    
     /* ===== TEM font scale (giống sheet) ===== */
     .temL1{
       font-weight:900;
-      font-size: clamp(15px, 2.2vw + 7px, 18px);  /* to hơn chút */
+      font-size: clamp(16px, 2.2vw + 7px, 19px); 
     }
     .temL2{
-      font-weight:900;
-      font-size: clamp(24px, 4.0vw + 10px, 32px); /* vẫn là dòng lớn nhất */
+      font-weight:1000;
+      font-size: clamp(26px, 4.4vw + 10px, 36px); 
     }
     .temL3{
       font-weight:600;
-      font-size: clamp(14px, 2.2vw + 6px, 17px);
+      font-size: clamp(14px, 2.0vw + 6px, 16px);
     }
     .temL4{
       font-weight:900;
-      font-size: clamp(18px, 3.0vw + 8px, 24px); 
+      font-size: clamp(16px, 2.4vw + 7px, 20px);
     }
     .temL5{
       font-weight:600;
-      font-size: clamp(14px, 2.1vw + 6px, 17px);
+      font-size: clamp(14px, 2.0vw + 6px, 16px);
     }
     .temL7{
       font-weight:900;
@@ -593,16 +652,16 @@
       </div>
     </div>
 
-    <div style="margin-top:14px; display:grid; gap:12px; grid-template-columns:1fr 1fr;">
-      <button id="btnStart" class="btn" onclick="startScan()">📷 BẮT ĐẦU QUÉT</button>
-      <button id="btnStop" class="btn secondary" onclick="stopScan()" disabled>⏸ DỪNG</button>
-    </div>
-
     <div style="margin-top:12px; display:grid; gap:12px; grid-template-columns: 1fr 1fr 1fr;">
       <div class="card" style="padding:12px;border-radius:16px;background:#fff;">OK <b id="okC">0</b></div>
       <div class="card" style="padding:12px;border-radius:16px;background:#fff;">SKIP <b id="skipC">0</b></div>
       <div class="card" style="padding:12px;border-radius:16px;background:#fff;">ERROR <b id="errC">0</b></div>
     </div>
+    
+    <div style="margin-top:12px;">
+      <button id="btnStop" class="btn secondary" onclick="stopScan()" disabled>⏹ DỪNG CAMERA</button>
+    </div>
+    
     <div id="statusBig" class="statusBig" style="margin-top:12px;">
       Sẵn sàng! Chọn công đoạn + bấm “Bắt đầu quét”
     </div>
@@ -614,6 +673,14 @@
     <div class="camWrap">
       <video id="video" playsinline muted autoplay></video>
       <div class="overlay"><div class="box"></div></div>
+
+      <div class="playOverlay" id="playOverlay">
+        <button class="playBtn" id="btnPlay" onclick="startScan()" aria-label="Start scanning">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+        </button>
+      </div>
 
       <div class="scanResult" id="scanResult">
         <svg class="okAnim" viewBox="0 0 120 120">
@@ -707,18 +774,20 @@
     // disable toàn bộ thao tác scan khi chưa có base
     window.addEventListener("DOMContentLoaded", () => {
       try{
-        document.getElementById("btnStart").disabled = true;
-        document.getElementById("btnStop").disabled  = true;
-        document.getElementById("step").disabled     = true;
-        document.getElementById("wInfo").disabled    = true;
+        document.getElementById("btnPlay").disabled    = true;
+        document.getElementById("btnStop").disabled    = true;
+        document.getElementById("step").disabled       = true;
+        document.getElementById("wInfo").disabled      = true;
         document.getElementById("statusBig").textContent =
-          "❌ Chưa có link /exec. Hãy bấm Open từ Sheet.";
+          "❌ Chưa có link deploy mã QR cho PXK này. ⛔️ Hãy báo văn phòng bấm Setup gấp !";
       }catch(e){}
     });
   }
 
-  const btnStart = document.getElementById("btnStart");
+  const btnPlay  = document.getElementById("btnPlay");
   const btnStop  = document.getElementById("btnStop");
+  const camWrapEl = document.getElementById("camWrap");
+  
   const wInfo     = document.getElementById("wInfo");
   const stepSel   = document.getElementById("step");
   const video     = document.getElementById("video");
@@ -1018,7 +1087,7 @@
   }
 
   function lockUI_(on){
-    btnStart.disabled = on;
+    if (btnPlay) btnPlay.disabled = on;
     btnStop.disabled  = !on;
     stepSel.disabled  = on;
     wInfo.disabled    = on;
@@ -1117,7 +1186,7 @@
             if (pk){
               lastSeenTs = now;
               if (isLockedPk_(pk)) {
-                setStatus_("skip", "⛔ ĐÃ QUÉT", pk);
+                setStatus_("skip", "⛔ ĐÃ QUÉT RỒI", pk);
               } else {
                 onScan_(pk);
               }
@@ -1127,7 +1196,8 @@
       } catch(e){
         const msg = String(e?.message || "");
         if (!/No QR code found|No QR code|NotFound/i.test(msg)) {
-          setStatus_("err", "❌ LỖI SCAN", msg || "Unknown");
+          setStatus_("err", "❌ LỖI SCAN", "Canh lại mã / lau camera");
+          console.warn("SCAN_ERR:", msg || e);
         }
       }
 
@@ -1177,11 +1247,11 @@
       document.getElementById("scanCard")?.scrollIntoView({ behavior:"smooth", block:"start" });
 
     } catch(e){
-      // retry 1 lần như UI cũ
       try{
         await new Promise(r=>setTimeout(r, 250));
         await openCameraOnce_();
         cameraReady = true;
+        camWrapEl?.classList.add("scanning");
         lastSeenTs = Date.now();
 
         if (!liveClearLoop){
@@ -1218,6 +1288,7 @@
 
     stopScanLoop_();
     closeCamera_();
+    camWrapEl?.classList.remove("scanning");
 
     lockUI_(false);
     setStatus_("", "⏹ Dừng camera.");
@@ -1304,7 +1375,7 @@
         const isSkip = (c?.code === "SKIP");
         if (isSkip){
           inc_("skip");
-          setStatus_("skip", "⛔ ĐÃ QUÉT", pk);
+          setStatus_("skip", "⛔ ĐÃ QUÉT RỒI", pk);
           lockPk_(pk, PK_SKIP_LOCK_MS);
           return;
         }
