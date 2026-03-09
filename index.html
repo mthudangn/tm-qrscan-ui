@@ -1295,7 +1295,14 @@
     // Ưu tiên camera sau trước, KHÔNG dùng video:true ở try đầu
     const tries = [
       { audio:false, video:{ facingMode:{ exact:"environment" } } },  // hard force (có thể fail trên vài máy)
-      { audio:false, video:{ facingMode:{ ideal:"environment" } } },  // soft force
+      { 
+        audio:false, 
+        video:{
+          facingMode:{ ideal:"environment" },
+          width:{ ideal:640 },
+          height:{ ideal:480 }
+        }
+      },  // soft force
       { audio:false, video:{ facingMode:"environment" } },            // legacy
       { audio:false, video:true },                                    // fallback cuối cùng thôi
     ];
@@ -1338,7 +1345,7 @@
   function startScanLoop_(){
     scanLoopOn = true;
 
-    const LOOP_MS = 70;
+    const LOOP_MS = 50;
     async function tick(){
       if (!scanLoopOn || !SCAN.running) return;
 
@@ -1349,7 +1356,7 @@
 
       try{
         const vw = video.videoWidth, vh = video.videoHeight;
-        const RATIO = 0.68;
+        const RATIO = 0.55;
         const size = Math.floor(Math.min(vw, vh) * RATIO);
         const sx = Math.floor((vw - size) / 2);
         const sy = Math.floor((vh - size) / 2);
