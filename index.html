@@ -1386,7 +1386,7 @@
       } catch(e){
         const msg = String(e?.message || "");
         if (!/No QR code found|No QR code|NotFound/i.test(msg)) {
-          setStatus_("err", "⚠️ LỖI - Canh mã trong khung / lau camera");
+          setStatus_("err", "⚠️ Giữ yên mã trong khung / Lau camera");
           console.warn("SCAN_ERR:", msg || e);
         }
       }
