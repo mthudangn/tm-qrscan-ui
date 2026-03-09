@@ -831,10 +831,6 @@
         STOP 📸
       </button>
     </div>
-    
-    <div id="statusBig" class="statusBig" style="margin-top:12px;">
-      🔔 Bật camera + Canh mã trong khung
-    </div>
   </div>
 
   <div class="card scanPanel" id="scanCard">
@@ -868,9 +864,13 @@
       </div>
     </div>
 
+    <div id="statusBig" class="statusBig" style="margin-top:12px;">
+      🔔 Bật camera + Canh mã trong khung
+    </div>
+
     <div class="temWrap">
       <div class="temTitleRow">
-        <div class="left">List mã TEM bạn quét thành công</div>
+        <div class="left">List TEM bạn đã quét</div>
         <div class="right" id="temHint">Chưa có</div>
       </div>
       <div class="temRow" id="temRow"></div>
@@ -1449,7 +1449,7 @@
         }
 
         startScanLoop_();
-        setStatus_("", "✅ Sẵn sàng quét", "Canh mã QR nằm trong khung vuông");
+        setStatus_("", "✅ Sẵn sàng - Canh mã QR trong khung vuông");
         showToast_("📷 CAMERA ON — QUÉT MÃ", "ok");
         return;
 
@@ -1457,7 +1457,7 @@
         stopScan();
         const name = String(e2?.name || e?.name || "UnknownError");
         const msg  = String(e2?.message || e?.message || "No message");
-        setStatus_("err", "❌ Không mở được camera", `(${name}) ${msg}`);
+        setStatus_("err", "❌ Không mở được camera");
       }
     }
   }
@@ -1500,7 +1500,7 @@
     const pk = String(productKey||"").trim();
     if (!pk){
       inc_("err");
-      setStatus_("err","⚠️ LỖI","QR không có ProductKey");
+      setStatus_("err","⚠️ LỖI - QR không có ProductKey");
       vibErr_();
       showToast_("❌ QR không hợp lệ", "err");
       return;
@@ -1561,7 +1561,7 @@
         }
 
         inc_("err");
-        setStatus_("err","⚠️ LỖI", msg);
+        setStatus_("err","⚠️ LỖI" + msg);
         vibErr_();
         showToast_("⚠️ " + msg, "warn");
       })
@@ -1577,7 +1577,7 @@
         setStatus_("err","⚠️ LỖI", msg);
         vibErr_();
 
-        showCenterPopup_("err", "⚠️ LỖI HỆ THỐNG", "\nKhông gửi được dữ liệu. QUÉT LẠI.");
+        showCenterPopup_("err", "⚠️ LỖI HỆ THỐNG \nKhông gửi được dữ liệu. QUÉT LẠI.");
         lockPk_(pk, PK_TIMEOUT_LOCK_MS);
       });
   }
