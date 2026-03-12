@@ -1159,11 +1159,14 @@
   }
 
   // ===== beep/vibrate =====
+  
   let audioCtx = null;
+  
   function ensureAudioCtx_(){
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
   }
+  
   function beepOk_(){
     try{
       ensureAudioCtx_();
@@ -1194,6 +1197,46 @@
   }
   
   function vibErr_(){ try{ navigator.vibrate?.(120); } catch(e){} }
+
+  // ===== voice speak =====
+  
+  let voiceReady_ = false;
+  
+  function unlockVoice_(){
+    voiceReady_ = true;
+    try{ ensureAudioCtx_(); }catch(e){}
+  }
+  
+  function speakVi_(text){
+    try{
+      if (!voiceReady_ || !("speechSynthesis" in window)) return;
+  
+      const msg = String(text || "").trim();
+      if (!msg) return;
+  
+      window.speechSynthesis.cancel();
+  
+      const u = new SpeechSynthesisUtterance(msg);
+      u.lang = "vi-VN";
+      u.rate = 1.3;
+      u.pitch = 1.0;
+      u.volume = 1.0;
+  
+      const voices = window.speechSynthesis.getVoices() || [];
+      const viVoice =
+        voices.find(v => /vi[-_]?vn/i.test(v.lang || "")) ||
+        voices.find(v => /Vietnam|Linh|Google tiếng Việt|Google Tiếng Việt/i.test(v.name || "")) ||
+        null;
+  
+      if (viVoice) u.voice = viVoice;
+  
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  
+  window.addEventListener("pointerdown", unlockVoice_, { passive:true });
+  window.addEventListener("touchstart", unlockVoice_, { passive:true });
+  window.addEventListener("click", unlockVoice_, { passive:true });
 
   // ===== API GET helper (avoid preflight) =====
   async function apiGet_(params){
@@ -1544,6 +1587,7 @@
         if (c && c.ok){
           inc_("ok");
           showCheck_();
+          speakVi_("QUÉT XONG");
 
           lockPk_(pk, PK_OK_LOCK_MS);
 
@@ -1575,6 +1619,7 @@
         if (isSkip){
           inc_("skip");
           setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(pk));
+          speakVi_("ĐÃ QUÉT");
           lockPk_(pk, PK_SKIP_LOCK_MS);
           return;
         }
