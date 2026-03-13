@@ -1433,6 +1433,7 @@
               lastSeenTs = now;
               if (isLockedPk_(pk)) {
                 setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(pk));
+                speakVi_("ĐÃ QUÉT");
               } else {
                 onScan_(pk);
               }
@@ -1468,7 +1469,7 @@
     ensureAudioCtx_();
     unlockVoice_();
     speechSynthesis.getVoices();
-    speakVi_("CAMERA ON");
+    speakVi_("CHUẨN BỊ CAMERA, CANH MÃ CHUẨN TRONG KHUNG");
 
     lockUI_(true);
     setStatus_("", "⏳ Đang bật camera...");
@@ -1590,7 +1591,7 @@
         if (c && c.ok){
           inc_("ok");
           showCheck_();
-          speakVi_("QUÉT XONG");
+          speakVi_("THÀNH CÔNG");
 
           lockPk_(pk, PK_OK_LOCK_MS);
 
