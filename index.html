@@ -1265,7 +1265,7 @@
       const j = await apiGet_({ action:"getSteps" });
       if (!j || !j.ok || !j.steps) throw new Error("Invalid JSON");
       
-      stepSel.innerHTML = '<option value="">-- Chọn một --</option>';
+      stepSel.innerHTML = '<option value="">--- Chọn một ---</option>';
 
       // accept steps as:
       // 1) array: ["GTAM", ...] OR [{id,label}, ...]
