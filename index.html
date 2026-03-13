@@ -1466,6 +1466,9 @@
 
     saveWorker_(worker);
     ensureAudioCtx_();
+    unlockVoice_();
+    speechSynthesis.getVoices();
+    speakVi_("CAMERA ON");
 
     lockUI_(true);
     setStatus_("", "⏳ Đang bật camera...");
