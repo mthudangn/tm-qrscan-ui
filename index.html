@@ -1097,17 +1097,9 @@
     const l3 = temPrint?.l3 || "";
     const l4 = temPrint?.l4 || "";
     const l5 = temPrint?.l5 || "";
-
-    const rawL7 = String(temPrint?.l7 || "").trim();
-    let khgh = "";
-    let stt  = "";
-    if (rawL7.includes(" ")) {
-      const parts = rawL7.split(/\s+/);
-      khgh = parts[0] || "";
-      stt  = parts.slice(1).join(" ");
-    } else {
-      stt = rawL7;
-    }
+    
+    const khgh = String(temPrint?.footer?.khgh || "").trim();
+    const stt  = String(temPrint?.footer?.stt  || "").trim();
 
     const meta = temPrint?.meta || {};
     const stepLabel = meta.stepLabel || "";
