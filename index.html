@@ -1590,21 +1590,24 @@
 
         if (c && c.ok){
           inc_("ok");
-          showCheck_();
-          speakVi_("THÀNH CÔNG");
-
+        
           lockPk_(pk, PK_OK_LOCK_MS);
-
-          // giữ inflight cho tới khi fetchTem xong (tránh chồng scan)
+        
           return apiGet_({ action:"fetchTem", productKey: pk, step, workerInfo: worker })
             .then(f=>{
               if (f && f.ok){
+                // 👉 CHỈ khi fetch thành công mới tick + render
                 renderTemCard_({
                   pk,
                   kind:"ok",
                   temPrint: f.temPrint,
                   doneBadges: f.doneBadges || c.doneBadges || []
                 });
+        
+                showCheck_();
+                speakVi_("THÀNH CÔNG");
+              } else {
+                throw new Error("FETCH_TEM_FAILED");
               }
             })
             .catch(_=>{})
