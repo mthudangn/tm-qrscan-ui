@@ -831,6 +831,21 @@
         STOP 📸
       </button>
     </div>
+    
+    <div id="pxkCurrent" style="
+      font-weight:1000;
+      margin-top:10px;
+      background:#e8f5e9;
+      padding:10px;
+      border-radius:8px;
+      color:#2e7d32;
+    " style="font-weight:1000; margin-top:10px;">
+      Chưa chọn PXK
+    </div>
+    
+    <button class="btn secondary" style="margin-top:10px;" onclick="changePxk_()">
+      🔁 Đổi PXK
+    </button>
   </div>
 
   <div class="card scanPanel" id="scanCard">
@@ -841,7 +856,7 @@
       <div class="overlay"><div class="box"></div></div>
 
       <div class="playOverlay" id="playOverlay">
-        <button class="playBtn" id="btnPlay" onclick="startScan()" aria-label="Start scanning">
+        <button class="playBtn" id="btnPlay" onclick="startScanFlow_()" aria-label="Start scanning">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z"></path>
           </svg>
@@ -1282,9 +1297,35 @@
       stepSel.addEventListener("click", fetchAndPopulateSteps_, { once:true });
     }
   }
-  document.addEventListener("DOMContentLoaded", fetchAndPopulateSteps_);
+  document.addEventListener("DOMContentLoaded", () => {
+    fetchAndPopulateSteps_();
+    renderCurrentPxk_();
+  });
+  
+  function renderCurrentPxk_(){
+    const el = document.getElementById("pxkCurrent");
+    if (!el) return;
+    el.textContent = CURRENT_PXK ? `PXK hiện tại: ${CURRENT_PXK}` : "Chưa chọn PXK";
+  }
+  
+  async function promptPxkBeforeScan_(){
+    const pxk = String(window.prompt("Nhập mã PXK cần quét:", CURRENT_PXK || "") || "").trim();
+    if (!pxk) return false;
+  
+    const res = await apiGet_({ action:"checkPxk", pxk });
+    if (!res || !res.ok) {
+      showToast_("❌ PXK không tồn tại hoặc không hợp lệ", "err");
+      return false;
+    }
+  
+    CURRENT_PXK = pxk;
+    renderCurrentPxk_();
+    return true;
+  }
 
-  // ===== scan state (giống UI cũ) =====
+  // ===== scan state =====
+  let CURRENT_PXK = "";
+
   const SCAN = {
     running:false,
     inflight:false,
@@ -1338,7 +1379,17 @@
       throw new Error("getUserMedia is not available in this browser.");
     }
   }
-
+  async function changePxk_(){
+    if (SCAN.running) {
+      showToast_("⛔️ STOP camera trước khi đổi PXK", "err");
+      return;
+    }
+  
+    const ok = await promptPxkBeforeScan_();
+    if (!ok) return;
+  
+    showToast_("✅ Đã đổi PXK", "ok");
+  }
   async function openCameraOnce_(){
     // Ưu tiên camera sau trước, KHÔNG dùng video:true ở try đầu
     const tries = [
@@ -1451,6 +1502,14 @@
     if (scanLoopTimer) { clearTimeout(scanLoopTimer); scanLoopTimer = null; }
   }
 
+  async function startScanFlow_(){
+    if (!CURRENT_PXK) {
+      const ok = await promptPxkBeforeScan_();
+      if (!ok) return;
+    }
+    return startScan();
+  }
+  
   async function startScan(){
     const worker = String(wInfo.value||"").trim();
     const step = String(stepSel.value||"").trim();
@@ -1554,7 +1613,7 @@
   window.addEventListener("pagehide", ()=>{ stopScan(); });
   window.addEventListener("beforeunload", ()=>{ stopScan(); });
 
-  // ===== onScan_: COMMIT rồi FETCH (GIỐNG UI CŨ) =====
+  // ===== onScan_: COMMIT rồi FETCH =====
   function onScan_(productKey){
     const pk = String(productKey||"").trim();
     if (!pk){
@@ -1565,8 +1624,13 @@
       return;
     }
 
-    const worker = String(wInfo.value||"").trim();
-    const step = String(stepSel.value||"").trim();
+    const step = String(stepSel.value || "").trim();
+    const worker = String(wInfo.value || "").trim();
+    
+    if (!CURRENT_PXK) {
+      showToast_("❌ Chưa chọn PXK", "err");
+      return;
+    }
 
     lockPk_(pk, PK_SHORT_LOCK_MS);
 
@@ -1575,7 +1639,7 @@
     setStatus_("", "⏳ Đang nhận mã… " + shortTem_(pk));
     try{ navigator.vibrate?.(15); }catch(e){}
 
-    apiGet_({ action:"commit", productKey: pk, step, workerInfo: worker })
+    apiGet_({ action:"commit", productKey: pk, step, workerInfo: worker, pxk: CURRENT_PXK })
       .then(c=>{
         clearTimeout(SCAN.phaseT);
         SCAN.phaseT = null;
@@ -1585,7 +1649,7 @@
         
           lockPk_(pk, PK_OK_LOCK_MS);
         
-          return apiGet_({ action:"fetchTem", productKey: pk, step, workerInfo: worker })
+          return apiGet_({ action:"fetchTem", productKey: pk, step, workerInfo: worker, pxk: CURRENT_PXK })
             .then(f=>{
               if (f && f.ok){
                 // 👉 CHỈ khi fetch thành công mới tick + render
