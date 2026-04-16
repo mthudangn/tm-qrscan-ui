@@ -1088,19 +1088,31 @@
       .replaceAll('"',"&quot;").replaceAll("'","&#39;");
   }
 
-  function extractPkFromScanText(text){
+  function extractQrPayload_(text){
     const s = String(text || "").trim();
-    if (!s) return "";
-  
+    if (!s) return { pxkId:"", productKey:"", raw:"" };
+
+    let raw = s;
+
     if (/^https?:\/\//i.test(s)) {
       try {
         const u = new URL(s);
-        const pk = u.searchParams.get("pk");
-        if (pk) return pk.trim();
+        const q = u.searchParams.get("pk") || u.searchParams.get("qr") || "";
+        if (q) raw = q.trim();
       } catch(e){}
     }
-  
-    return s;
+
+    const pos = raw.indexOf("|");
+    if (pos === -1) {
+      // backward compatible QR cũ
+      return { pxkId:"", productKey: raw, raw };
+    }
+
+    return {
+      pxkId: raw.slice(0, pos).trim().toUpperCase(),
+      productKey: raw.slice(pos + 1).trim(),
+      raw
+    };
   }
 
   function renderTemCard_(payload){
@@ -1476,14 +1488,16 @@
           if (now - SCAN.lastHitTs >= SCAN.cooldownMs) {
             SCAN.lastHitTs = now;
 
-            const pk = extractPkFromScanText(raw);
+            const qrObj = extractQrPayload_(raw);
+            const pk = qrObj.productKey;
+
             if (pk){
               lastSeenTs = now;
               if (isLockedPk_(pk)) {
                 setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(pk));
                 speakVi_("ĐÃ QUÉT");
               } else {
-                onScan_(pk);
+                onScan_(qrObj);
               }
             }
           }
@@ -1619,7 +1633,7 @@
   window.addEventListener("beforeunload", ()=>{ stopScan(); });
 
   // ===== onScan_: COMMIT rồi FETCH =====
-  function onScan_(productKey){
+  function onScan_(scanObj){
     const pk = String(productKey||"").trim();
     if (!pk){
       inc_("err");
