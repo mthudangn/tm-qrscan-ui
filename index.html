@@ -1356,7 +1356,7 @@
     ok:0, skip:0, err:0
   };
 
-  const PK_OK_LOCK_MS      = 2 * 60 * 1000;
+  const PK_OK_LOCK_MS      = 30 * 1000;
   const PK_TIMEOUT_LOCK_MS = 60 * 1000;
   const PK_SHORT_LOCK_MS   = 800;
   const PK_SKIP_LOCK_MS    = 2000;
@@ -1477,7 +1477,7 @@
 
       try{
         const vw = video.videoWidth, vh = video.videoHeight;
-        const RATIO = 0.60;
+        const RATIO = 0.50;
         const size = Math.floor(Math.min(vw, vh) * RATIO);
         const sx = Math.floor((vw - size) / 2);
         const sy = Math.floor((vh - size) / 2);
