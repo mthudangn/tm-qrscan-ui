@@ -895,10 +895,10 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+<script src="https://unprodKeyg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
 <script>
   if (window.QrScanner) {
-    QrScanner.WORKER_PATH = "https://unpkg.com/qr-scanner@1.4.2/dist/qr-scanner-worker.min.js";
+    QrScanner.WORKER_PATH = "https://unprodKeyg.com/qr-scanner@1.4.2/dist/qr-scanner-worker.min.js";
   }
 </script>
 
@@ -1097,7 +1097,11 @@
     if (/^https?:\/\//i.test(s)) {
       try {
         const u = new URL(s);
-        const q = u.searchParams.get("pk") || u.searchParams.get("qr") || "";
+        const q =
+          u.searchParams.get("prodKey") ||
+          u.searchParams.get("pk") ||     // backward compatible
+          u.searchParams.get("qr") ||     // backward compatible
+          "";
         if (q) raw = q.trim();
       } catch(e){}
     }
@@ -1115,7 +1119,7 @@
   }
 
   function renderTemCard_(payload){
-    const { pk, kind, temPrint, doneBadges = [] } = payload || {};
+    const { prodKey, kind, temPrint, doneBadges = [] } = payload || {};
     if (String(kind || "").toLowerCase() !== "ok") return;
 
     const l1 = temPrint?.l1 || "";
@@ -1352,22 +1356,22 @@
     ok:0, skip:0, err:0
   };
 
-  const PK_OK_LOCK_MS      = 2 * 60 * 1000;
-  const PK_TIMEOUT_LOCK_MS = 60 * 1000;
-  const PK_SHORT_LOCK_MS   = 800;
-  const PK_SKIP_LOCK_MS    = 2000;
+  const prodKey_OK_LOCK_MS      = 2 * 60 * 1000;
+  const prodKey_TIMEOUT_LOCK_MS = 60 * 1000;
+  const prodKey_SHORT_LOCK_MS   = 800;
+  const prodKey_SKIP_LOCK_MS    = 2000;
 
-  const pkLock = new Map();
-  function isLockedPk_(pk){
+  const prodKeyLock = new Map();
+  function isLockedprodKey_(prodKey){
     const now = Date.now();
-    for (const [k, t] of pkLock) if (t <= now) pkLock.delete(k);
-    const t0 = pkLock.get(pk);
+    for (const [k, t] of prodKeyLock) if (t <= now) prodKeyLock.delete(k);
+    const t0 = prodKeyLock.get(prodKey);
     return !!(t0 && t0 > now);
   }
-  function lockPk_(pk, ms){
+  function lockprodKey_(prodKey, ms){
     const dur = Number(ms);
     if (!dur || dur <= 0) return;
-    pkLock.set(pk, Date.now() + dur);
+    prodKeyLock.set(prodKey, Date.now() + dur);
   }
 
   function inc_(k){
@@ -1490,12 +1494,12 @@
             SCAN.lastHitTs = now;
 
             const qrObj = extractQrPayload_(raw);
-            const pk = qrObj.prodKey;
+            const prodKey = qrObj.prodKey;
 
-            if (pk){
+            if (prodKey){
               lastSeenTs = now;
-              if (isLockedPk_(pk)) {
-                setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(pk));
+              if (isLockedprodKey_(prodKey)) {
+                setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
                 speakVi_("ĐÃ QUÉT");
               } else {
                 onScan_(qrObj);
@@ -1635,62 +1639,61 @@
 
   // ===== onScan_: COMMIT rồi FETCH =====
   function onScan_(scanObj){
-    const pk = String(scanObj?.prodKey || "").trim();
+    const prodKey = String(scanObj?.prodKey || "").trim();
     const qrPxk = String(scanObj?.pxkId || "").trim().toUpperCase();
-
-    if (!pk){
+  
+    if (!prodKey){
       inc_("err");
       setStatus_("err","⚠️ LỖI - QR không có prodKey");
       vibErr_();
       showToast_("❌ QR không hợp lệ", "err");
       return;
     }
-
+  
     const step = String(stepSel.value || "").trim();
     const worker = String(wInfo.value || "").trim();
-
+  
     if (!CURRENT_PXK) {
       showToast_("❌ Chưa nhập PXK ID", "err");
       return;
     }
-
+  
     // QR mới: nếu có PXK trong mã thì phải khớp PXK đang chọn
     if (qrPxk && qrPxk !== String(CURRENT_PXK || "").trim().toUpperCase()) {
       inc_("err");
-      setStatus_("err","⚠️ SAI PXK - " + shortTem_(pk));
+      setStatus_("err","⚠️ SAI PXK - " + shortTem_(prodKey));
       vibErr_();
       showToast_(`❌ Mã thuộc PXK ${qrPxk}, không phải PXK hiện tại ${CURRENT_PXK}`, "err");
       return;
     }
-
-    lockPk_(pk, PK_SHORT_LOCK_MS);
-
+  
+    lockprodKey_(prodKey, prodKey_SHORT_LOCK_MS);
+  
     SCAN.inflight = true;
     showPendingStart_();
-    setStatus_("", "⏳ Đang nhận mã… " + shortTem_(pk));
+    setStatus_("", "⏳ Đang nhận mã… " + shortTem_(prodKey));
     try{ navigator.vibrate?.(15); }catch(e){}
-
-    apiGet_({ action:"commit", prodKey: pk, step, workerInfo: worker, pxk: CURRENT_PXK })
+  
+    apiGet_({ action:"commit", prodKey, step, workerInfo: worker, pxk: CURRENT_PXK })
       .then(c=>{
         clearTimeout(SCAN.phaseT);
         SCAN.phaseT = null;
-
+  
         if (c && c.ok){
           inc_("ok");
-        
-          lockPk_(pk, PK_OK_LOCK_MS);
-        
-          return apiGet_({ action:"fetchTem", prodKey: pk, step, workerInfo: worker, pxk: CURRENT_PXK })
+  
+          lockprodKey_(prodKey, prodKey_OK_LOCK_MS);
+  
+          return apiGet_({ action:"fetchTem", prodKey, step, workerInfo: worker, pxk: CURRENT_PXK })
             .then(f=>{
               if (f && f.ok){
-                // 👉 CHỈ khi fetch thành công mới tick + render
                 renderTemCard_({
-                  pk,
+                  prodKey: prodKey,
                   kind:"ok",
                   temPrint: f.temPrint,
                   doneBadges: f.doneBadges || c.doneBadges || []
                 });
-        
+  
                 showCheck_();
                 speakVi_("THÀNH CÔNG");
               } else {
@@ -1712,14 +1715,14 @@
         const isSkip = (c?.code === "SKIP");
         if (isSkip){
           inc_("skip");
-          setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(pk));
+          setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
           speakVi_("ĐÃ QUÉT");
-          lockPk_(pk, PK_SKIP_LOCK_MS);
+          lockprodKey_(prodKey, prodKey_SKIP_LOCK_MS);
           return;
         }
 
         inc_("err");
-        setStatus_("err","⚠️ LỖI" + msg);
+        setStatus_("err","⚠️ LỖI -" + msg);
         vibErr_();
         showToast_("⚠️ " + msg, "warn");
       })
@@ -1736,7 +1739,7 @@
         vibErr_();
 
         showCenterPopup_("err", "⚠️ LỖI HỆ THỐNG \nKhông gửi được dữ liệu. QUÉT LẠI.");
-        lockPk_(pk, PK_TIMEOUT_LOCK_MS);
+        lockprodKey_(prodKey, prodKey_TIMEOUT_LOCK_MS);
       });
   }
 </script>
