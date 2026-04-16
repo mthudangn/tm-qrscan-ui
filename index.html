@@ -1090,7 +1090,7 @@
 
   function extractQrPayload_(text){
     const s = String(text || "").trim();
-    if (!s) return { pxkId:"", productKey:"", raw:"" };
+    if (!s) return { pxkId:"", prodKey:"", raw:"" };
 
     let raw = s;
 
@@ -1104,12 +1104,12 @@
 
     const pos = raw.indexOf("|");
     if (pos === -1) {
-      return { pxkId:"", productKey: raw, raw }; // backward compatible
+      return { pxkId:"", prodKey: raw, raw };
     }
-
+    
     return {
       pxkId: raw.slice(0, pos).trim().toUpperCase(),
-      productKey: raw.slice(pos + 1).trim(),
+      prodKey: raw.slice(pos + 1).trim(),
       raw
     };
   }
@@ -1635,7 +1635,7 @@
 
   // ===== onScan_: COMMIT rồi FETCH =====
   function onScan_(scanObj){
-    const pk = String(scanObj?.productKey || "").trim();
+    const pk = String(scanObj?.prodKey || "").trim();
     const qrPxk = String(scanObj?.pxkId || "").trim().toUpperCase();
 
     if (!pk){
