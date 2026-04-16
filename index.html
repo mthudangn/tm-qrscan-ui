@@ -844,7 +844,7 @@
     </div>
     
     <button class="btn secondary" style="font-weight:1000; margin-top:10px; color:#f88375;" onclick="changePxk_()">
-      ✏️ Nhập PXK ID
+      ✏️ Nhập mã PXK
     </button>
   </div>
 
@@ -1316,7 +1316,7 @@
   function renderCurrentPxk_(){
     const el = document.getElementById("pxkCurrent");
     if (!el) return;
-    el.textContent = CURRENT_PXK ? `PXK hiện tại: ${CURRENT_PXK}` : "Chưa chọn PXK";
+    el.textContent = CURRENT_PXK ? `PXK hiện tại: ${CURRENT_PXK}` : "Chưa nhập PXK_ID";
   }
   
   async function promptPxkBeforeScan_(){
@@ -1650,7 +1650,7 @@
     const worker = String(wInfo.value || "").trim();
 
     if (!CURRENT_PXK) {
-      showToast_("❌ Chưa chọn PXK", "err");
+      showToast_("❌ Chưa nhập PXK_ID", "err");
       return;
     }
 
