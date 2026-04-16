@@ -895,10 +895,10 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="https://unprodKeyg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+<script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
 <script>
   if (window.QrScanner) {
-    QrScanner.WORKER_PATH = "https://unprodKeyg.com/qr-scanner@1.4.2/dist/qr-scanner-worker.min.js";
+    QrScanner.WORKER_PATH = "https://unpkg.com/qr-scanner@1.4.2/dist/qr-scanner-worker.min.js";
   }
 </script>
 
@@ -1356,19 +1356,19 @@
     ok:0, skip:0, err:0
   };
 
-  const prodKey_OK_LOCK_MS      = 2 * 60 * 1000;
-  const prodKey_TIMEOUT_LOCK_MS = 60 * 1000;
-  const prodKey_SHORT_LOCK_MS   = 800;
-  const prodKey_SKIP_LOCK_MS    = 2000;
+  const PK_OK_LOCK_MS      = 2 * 60 * 1000;
+  const PK_TIMEOUT_LOCK_MS = 60 * 1000;
+  const PK_SHORT_LOCK_MS   = 800;
+  const PK_SKIP_LOCK_MS    = 2000;
 
   const prodKeyLock = new Map();
-  function isLockedprodKey_(prodKey){
+  function isLockedPK_(prodKey){
     const now = Date.now();
     for (const [k, t] of prodKeyLock) if (t <= now) prodKeyLock.delete(k);
     const t0 = prodKeyLock.get(prodKey);
     return !!(t0 && t0 > now);
   }
-  function lockprodKey_(prodKey, ms){
+  function lockPK_(prodKey, ms){
     const dur = Number(ms);
     if (!dur || dur <= 0) return;
     prodKeyLock.set(prodKey, Date.now() + dur);
@@ -1498,7 +1498,7 @@
 
             if (prodKey){
               lastSeenTs = now;
-              if (isLockedprodKey_(prodKey)) {
+              if (isLockedPK_(prodKey)) {
                 setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
                 speakVi_("ĐÃ QUÉT");
               } else {
@@ -1667,7 +1667,7 @@
       return;
     }
   
-    lockprodKey_(prodKey, prodKey_SHORT_LOCK_MS);
+    lockPK_(prodKey, PK_SHORT_LOCK_MS);
   
     SCAN.inflight = true;
     showPendingStart_();
@@ -1682,7 +1682,7 @@
         if (c && c.ok){
           inc_("ok");
   
-          lockprodKey_(prodKey, prodKey_OK_LOCK_MS);
+          lockPK_(prodKey, PK_OK_LOCK_MS);
   
           return apiGet_({ action:"fetchTem", prodKey, step, workerInfo: worker, pxk: CURRENT_PXK })
             .then(f=>{
@@ -1717,7 +1717,7 @@
           inc_("skip");
           setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
           speakVi_("ĐÃ QUÉT");
-          lockprodKey_(prodKey, prodKey_SKIP_LOCK_MS);
+          lockPK_(prodKey, PK_SKIP_LOCK_MS);
           return;
         }
 
@@ -1735,11 +1735,11 @@
 
         inc_("err");
         const msg = String(err?.message || "Unknown");
-        setStatus_("err","⚠️ LỖI", msg);
+        setStatus_("err","⚠️ LỖI -", msg);
         vibErr_();
 
         showCenterPopup_("err", "⚠️ LỖI HỆ THỐNG \nKhông gửi được dữ liệu. QUÉT LẠI.");
-        lockprodKey_(prodKey, prodKey_TIMEOUT_LOCK_MS);
+        lockPK_(prodKey, PK_TIMEOUT_LOCK_MS);
       });
   }
 </script>
