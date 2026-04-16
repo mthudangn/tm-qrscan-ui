@@ -839,7 +839,7 @@
       padding:10px;
       border-radius:8px;
       color:#2e7d32;
-    " style="font-weight:1000; margin-top:10px;">
+    ">
       Chưa chọn PXK
     </div>
     
@@ -1104,8 +1104,7 @@
 
     const pos = raw.indexOf("|");
     if (pos === -1) {
-      // backward compatible QR cũ
-      return { pxkId:"", productKey: raw, raw };
+      return { pxkId:"", productKey: raw, raw }; // backward compatible
     }
 
     return {
@@ -1328,9 +1327,11 @@
     console.log("checkPxk =", res);
 
     if (!res || !res.ok) {
-      const msg = res
-        ? `❌ PXK sai\nNhập: ${res.pxk || pxk}\nSheet A6: ${res.current || "?"}\nFile: ${res.spreadsheetName || "?"}\nVer: ${res.version || "old"}`
-        : "❌ PXK không tồn tại hoặc không hợp lệ";
+      let msg = "❌ PXK không tồn tại hoặc không hợp lệ";
+      if (res?.code === "PXK_CLOSED") msg = "✅ PXK này đã hoàn tất nhập kho, không cần quét thêm";
+      else if (res?.code === "PXK_NOT_FOUND") msg = "❌ PXK không tồn tại";
+      else if (res?.msg) msg = `❌ ${res.msg}`;
+
       showToast_(msg, "err");
       return false;
     }
@@ -1659,14 +1660,6 @@
       setStatus_("err","⚠️ SAI PXK - " + shortTem_(pk));
       vibErr_();
       showToast_(`❌ Mã thuộc PXK ${qrPxk}, không phải PXK hiện tại ${CURRENT_PXK}`, "err");
-      return;
-    }
-
-    const step = String(stepSel.value || "").trim();
-    const worker = String(wInfo.value || "").trim();
-    
-    if (!CURRENT_PXK) {
-      showToast_("❌ Chưa chọn PXK", "err");
       return;
     }
 
