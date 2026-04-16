@@ -1634,12 +1634,31 @@
 
   // ===== onScan_: COMMIT rồi FETCH =====
   function onScan_(scanObj){
-    const pk = String(productKey||"").trim();
+    const pk = String(scanObj?.productKey || "").trim();
+    const qrPxk = String(scanObj?.pxkId || "").trim().toUpperCase();
+
     if (!pk){
       inc_("err");
       setStatus_("err","⚠️ LỖI - QR không có ProductKey");
       vibErr_();
       showToast_("❌ QR không hợp lệ", "err");
+      return;
+    }
+
+    const step = String(stepSel.value || "").trim();
+    const worker = String(wInfo.value || "").trim();
+
+    if (!CURRENT_PXK) {
+      showToast_("❌ Chưa chọn PXK", "err");
+      return;
+    }
+
+    // QR mới: nếu có PXK trong mã thì phải khớp PXK đang chọn
+    if (qrPxk && qrPxk !== String(CURRENT_PXK || "").trim().toUpperCase()) {
+      inc_("err");
+      setStatus_("err","⚠️ SAI PXK - " + shortTem_(pk));
+      vibErr_();
+      showToast_(`❌ Mã thuộc PXK ${qrPxk}, không phải PXK hiện tại ${CURRENT_PXK}`, "err");
       return;
     }
 
