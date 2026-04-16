@@ -1113,7 +1113,7 @@
     
     return {
       pxkId: raw.slice(0, pos).trim().toUpperCase(),
-      prodKey: raw.slice(pos + 1).trim(),
+      prodKey: raw.trim(),
       raw
     };
   }
@@ -1477,7 +1477,7 @@
 
       try{
         const vw = video.videoWidth, vh = video.videoHeight;
-        const RATIO = 0.55;
+        const RATIO = 0.60;
         const size = Math.floor(Math.min(vw, vh) * RATIO);
         const sx = Math.floor((vw - size) / 2);
         const sy = Math.floor((vh - size) / 2);
