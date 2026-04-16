@@ -1309,7 +1309,7 @@
   }
   
   async function promptPxkBeforeScan_(){
-    const pxk = String(window.prompt("Nhập mã PXK cần quét:", CURRENT_PXK || "") || "").trim();
+    const pxk = String(window.prompt("Nhập mã PXK cần quét:", CURRENT_PXK || "") || "").trim().toUpperCase();
     if (!pxk) return false;
   
     const res = await apiGet_({ action:"checkPxk", pxk });
