@@ -1313,12 +1313,17 @@
     if (!pxk) return false;
   
     const res = await apiGet_({ action:"checkPxk", pxk });
+    console.log("checkPxk =", res);
+
     if (!res || !res.ok) {
-      showToast_("❌ PXK không tồn tại hoặc không hợp lệ", "err");
+      const msg = res
+        ? `❌ PXK sai\nNhập: ${res.pxk || pxk}\nSheet A6: ${res.current || "?"}\nFile: ${res.spreadsheetName || "?"}\nVer: ${res.version || "old"}`
+        : "❌ PXK không tồn tại hoặc không hợp lệ";
+      showToast_(msg, "err");
       return false;
     }
   
-    CURRENT_PXK = pxk;
+    CURRENT_PXK = res.pxk || pxk;
     renderCurrentPxk_();
     return true;
   }
