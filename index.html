@@ -1490,7 +1490,7 @@
             SCAN.lastHitTs = now;
 
             const qrObj = extractQrPayload_(raw);
-            const pk = qrObj.productKey;
+            const pk = qrObj.prodKey;
 
             if (pk){
               lastSeenTs = now;
@@ -1640,7 +1640,7 @@
 
     if (!pk){
       inc_("err");
-      setStatus_("err","⚠️ LỖI - QR không có ProductKey");
+      setStatus_("err","⚠️ LỖI - QR không có prodKey");
       vibErr_();
       showToast_("❌ QR không hợp lệ", "err");
       return;
@@ -1670,7 +1670,7 @@
     setStatus_("", "⏳ Đang nhận mã… " + shortTem_(pk));
     try{ navigator.vibrate?.(15); }catch(e){}
 
-    apiGet_({ action:"commit", productKey: pk, step, workerInfo: worker, pxk: CURRENT_PXK })
+    apiGet_({ action:"commit", prodKey: pk, step, workerInfo: worker, pxk: CURRENT_PXK })
       .then(c=>{
         clearTimeout(SCAN.phaseT);
         SCAN.phaseT = null;
@@ -1680,7 +1680,7 @@
         
           lockPk_(pk, PK_OK_LOCK_MS);
         
-          return apiGet_({ action:"fetchTem", productKey: pk, step, workerInfo: worker, pxk: CURRENT_PXK })
+          return apiGet_({ action:"fetchTem", prodKey: pk, step, workerInfo: worker, pxk: CURRENT_PXK })
             .then(f=>{
               if (f && f.ok){
                 // 👉 CHỈ khi fetch thành công mới tick + render
