@@ -368,16 +368,38 @@
         box-shadow .12s ease,
         transform .12s ease;
     }
-    .camWrap::after{
+    .barcodeBox{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:min(84%, 320px);
+      height:56px;
+      transform:translate(-50%, -50%);
+      border:3px solid rgba(255,255,255,.88);
+      border-radius:14px;
+      pointer-events:none;
+      z-index:8;
+      box-shadow:0 0 0 999px rgba(0,0,0,.10);
+    }
+    
+    .barcodeBox::after{
       content:"";
       position:absolute;
-      left:10%;
-      right:10%;
+      left:10px;
+      right:10px;
       top:50%;
       height:2px;
-      background: rgba(255,255,255,.7);
+      background:rgba(255,255,255,.75);
       border-radius:2px;
-      transform: translateY(-50%);
+      transform:translateY(-50%);
+    }
+    
+    .barcodeBox.flash-ok{
+      border-color:#40D2CC;
+      box-shadow:
+        0 0 0 999px rgba(0,0,0,.10),
+        0 0 0 4px rgba(64,210,204,.18),
+        0 0 18px rgba(64,210,204,.45);
     }
     .camWrap.flash-ok{
       border-color:#40D2CC;
@@ -877,6 +899,7 @@
 
     <div class="camWrap" id="camWrap">
       <div id="reader" style="width:100%;height:100%;"></div>
+      <div class="barcodeBox" id="barcodeBox"></div>
 
       <div class="playOverlay" id="playOverlay">
         <button class="playBtn" id="btnPlay" onclick="startScanFlow_()" aria-label="Start scanning">
@@ -943,8 +966,8 @@
   
     if (rt.isIOS) {
       return {
-        fps: 8,
-        qrbox: { width: 260, height: 90 },
+        fps: 10,
+        qrbox: { width: 300, height: 56 },
         aspectRatio: 1.7778,
         disableFlip: false,
         showTorchButtonIfSupported: false
@@ -952,8 +975,8 @@
     }
   
     return {
-      fps: 10,
-      qrbox: { width: 280, height: 90 },
+      fps: 12,
+      qrbox: { width: 320, height: 56 },
       aspectRatio: 1.7778,
       disableFlip: false,
       showTorchButtonIfSupported: false
@@ -1604,7 +1627,7 @@
   }
 
   function flashBarcodeBox_(){
-    const box = document.getElementById("camWrap");
+    const box = document.getElementById("barcodeBox");
     if (!box) return;
   
     box.classList.remove("flash-ok");
@@ -1618,7 +1641,6 @@
   }
   
   function hideHtml5QrcodeExtraUi_(){
-    // bỏ các lớp overlay / shaded region mặc định của lib nếu có
     const root = document.getElementById("reader");
     if (!root) return;
   
@@ -1626,12 +1648,17 @@
       el.style.display = "none";
     });
   
-    root.querySelectorAll("[class]").forEach(el => {
+    root.querySelectorAll("*").forEach(el => {
       const cls = String(el.className || "");
+      const id  = String(el.id || "");
+  
       if (
-        /qr-shaded-region|qr-region|scan-region|highlight/i.test(cls)
+        /qr-shaded-region|qr-region|scan-region|highlight|shade|overlay/i.test(cls) ||
+        /qr-shaded-region|qr-region|scan-region|highlight|shade|overlay/i.test(id)
       ) {
         el.style.display = "none";
+        el.style.opacity = "0";
+        el.style.pointerEvents = "none";
       }
     });
   }
@@ -1790,8 +1817,12 @@
       if (!liveClearLoop){
         liveClearLoop = setInterval(() => {
           if (!SCAN.running) return;
+      
+          hideHtml5QrcodeExtraUi_();
+      
           if (SCAN.inflight) return;
           if (centerPopup.classList.contains("show")) return;
+      
           if (Date.now() - lastSeenTs > 350 && !SCAN.inflight) {
             setStatus_("", "");
           }
