@@ -87,10 +87,23 @@
       font-size: calc(var(--base) * 1.05);
     }
     .top .t2{
-      opacity:.92;
-      margin-top:8px;
-      font-size: calc(var(--base) * .80);
+      margin-top:10px;
       line-height:1.25;
+    }
+    
+    /* dòng chính */
+    .scanHintMain{
+      font-weight:1000;
+      font-size: calc(var(--base) * .92);
+      color:#5C4A3F; /* taupe đậm, dễ đọc trên nền hồng */
+    }
+    
+    /* dòng phụ */
+    .scanHintSub{
+      margin-top:4px;
+      font-weight:600;
+      font-size: calc(var(--base) * .70);
+      color:#8B6F63; /* taupe nhạt hơn, vẫn aesthetic */
     }
 
     .card{
@@ -358,6 +371,7 @@
       height:100%;
       display:block;
       background:#000;
+      object-fit: cover;
     }
     .overlay{
       position:absolute; inset:0;
@@ -800,8 +814,10 @@
 <div class="wrap">
   <div class="top">
     <div class="t1">BARCODE SCAN</div>
-    <div class="t2">📍 Quét QR mở phiếu → Chọn công đoạn → Quét barcode từng item</div>
-  </div>
+    <div class="t2">
+      <div class="scanHintMain">📍 Chỉ quét mã BARCODE ngang dài cuối tem</div>
+      <div class="scanHintSub">⚠️ Bỏ qua mã QR vuông góc trái</div>
+    </div>
 
   <div class="card">
     <h4>🧑‍🏭 Thông tin</h4>
@@ -915,20 +931,18 @@
 
   function getScannerProfile_(){
     const rt = detectRuntime_();
-
+  
     if (rt.isIOS) {
       return {
         fps: 8,
         qrbox: { width: 260, height: 90 },
-        aspectRatio: 1.7778,
         disableFlip: false
       };
     }
-
+  
     return {
       fps: 10,
       qrbox: { width: 280, height: 90 },
-      aspectRatio: 1.7778,
       disableFlip: false
     };
   }
@@ -1149,16 +1163,42 @@
       .replaceAll('"',"&quot;").replaceAll("'","&#39;");
   }
 
+  function isLikelyMasterQr_(text){
+    const s = String(text || "").trim();
+    if (!s) return false;
+  
+    return (
+      /^https?:\/\//i.test(s) ||
+      /[?&]pxk=/i.test(s) ||
+      /[?&]api=/i.test(s) ||
+      /mthudangn\.github\.io/i.test(s) ||
+      /script\.google\.com/i.test(s)
+    );
+  }
+  
+  function isLikelyItemBarcode_(text){
+    const s = String(text || "").trim();
+    if (!s) return false;
+  
+    // Chỉ nhận barcode item dạng prodKey:
+    // HV03042026|KOINSHOESB|39/3
+    // hoặc có hậu tố duplicate:
+    // HV03042026|KOINSHOESB|39/3#1
+    if (isLikelyMasterQr_(s)) return false;
+  
+    return /^[A-Z0-9]+\|[A-Z0-9]+\|[^|#]+(?:#\d+)?$/i.test(s);
+  }
+  
   function extractItemPayload_(text){
     const s = String(text || "").trim();
     if (!s) return { pxkId:"", prodKey:"", raw:"" };
   
-    const raw = s;
-  
-    const pos = raw.indexOf("|");
-    if (pos === -1) {
-      return { pxkId:"", prodKey: raw, raw };
+    if (!isLikelyItemBarcode_(s)) {
+      return { pxkId:"", prodKey:"", raw:s };
     }
+  
+    const raw = s;
+    const pos = raw.indexOf("|");
   
     return {
       pxkId: raw.slice(0, pos).trim().toUpperCase(),
@@ -1603,13 +1643,19 @@
   
         const raw = String(decodedText || "").trim();
         if (!raw) return;
-  
+        
+        // BỎ QUA QR master / URL / mã không đúng format barcode item
+        if (!isLikelyItemBarcode_(raw)) {
+          return;
+        }
+        
         const now = Date.now();
         if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
         SCAN.lastHitTs = now;
-  
+        
         const itemObj = extractItemPayload_(raw);
         const prodKey = itemObj.prodKey;
+        
         if (!prodKey) return;
   
         lastSeenTs = now;
