@@ -1766,7 +1766,7 @@
     }
   
     const step = String(stepSel.value || "").trim();
-    const worker = String(wInfo.value || "").trim();
+    const worker = String(wInfo.value || "").trim().toLowerCase();
   
     if (!CURRENT_PXK) {
       showToast_("❌ Chưa nhập PXK ID", "err");
