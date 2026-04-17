@@ -995,6 +995,12 @@
       return "";
     }
   }
+
+  let CURRENT_CTX = {
+    pxk: "",
+    company: "",
+    dateText: ""
+  };
   
   const API_BASE = loadApiBase_();
   if (!API_BASE){
@@ -1022,12 +1028,6 @@
       }catch(e){}
     });
   }
-
-  let CURRENT_CTX = {
-    pxk: "",
-    company: "",
-    dateText: ""
-  };
 
   const btnPlay  = document.getElementById("btnPlay");
   const btnStop  = document.getElementById("btnStop");
