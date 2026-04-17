@@ -1616,7 +1616,6 @@
               lastSeenTs = now;
               if (isLockedPK_(prodKey)) {
                 setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
-                speakVi_("ĐÃ QUÉT");
               } else {
                 onScan_(qrObj);
               }
