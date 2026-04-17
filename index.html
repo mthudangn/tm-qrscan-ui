@@ -1144,11 +1144,11 @@
     const today = meta.today || "";
   
     const statusLabelMap = {
-      queued: "🟡 Đã nhận",
+      queued: "🟡 Đã nhận mã",
       processing: "🟡 Đang xử lý",
       ok: "🟢 Hoàn tất",
-      skip: "🔵 Đã có",
-      err: "🔴 Lỗi"
+      skip: "🔵 Đã quét",
+      err: "🔴 LỖI"
     };
     const statusLabel = statusLabelMap[status] || "🟡 Đã nhận";
   
@@ -1374,8 +1374,8 @@
               note: note
             });
   
-            if (temStt) speakVi_(`Tem ${temStt} lỗi`);
-            else speakVi_("Có lỗi");
+            if (temStt) speakVi_(`Lỗi tem ${temStt}`);
+            else speakVi_("Tem lỗi");
   
             LIVE_QUEUE.delete(prodKey);
             continue;
@@ -1474,7 +1474,7 @@
 
   const PK_OK_LOCK_MS      = 30 * 1000;
   const PK_TIMEOUT_LOCK_MS = 60 * 1000;
-  const PK_SHORT_LOCK_MS   = 800;
+  const PK_SHORT_LOCK_MS   = 2000;
   const PK_SKIP_LOCK_MS    = 2000;
 
   const prodKeyLock = new Map();
@@ -1650,7 +1650,7 @@
   }
   
   async function startScan(){
-    const worker = String(wInfo.value||"").trim();
+    const worker = String(wInfo.value||"").trim().toLowerCase();
     const step = String(stepSel.value||"").trim();
     if (!worker){ wInfo.focus(); return; }
     if (!step){ showToast_("⚠️ Chọn công đoạn trước khi quét mã", "warn"); stepSel.focus(); return; }
@@ -1792,10 +1792,13 @@
         clearTimeout(SCAN.phaseT);
         SCAN.phaseT = null;
   
-        SCAN.inflight = false;
-        showPendingStop_();
-  
         if (c && c.ok && c.code === "QUEUED"){
+          // KHÓA NGAY trước khi thả inflight để camera không quét lại chính mã này
+          lockPK_(prodKey, PK_OK_LOCK_MS);
+  
+          SCAN.inflight = false;
+          showPendingStop_();
+  
           renderTemCard_({
             prodKey,
             kind:"queued",
@@ -1813,27 +1816,30 @@
   
           LIVE_QUEUE.set(prodKey, { prodKey, step, worker });
           startBulkQueuePolling_();
-  
-          lockPK_(prodKey, PK_OK_LOCK_MS);
           return;
         }
+  
+        SCAN.inflight = false;
+        showPendingStop_();
   
         const msg = String(c?.msg || "ERROR");
         const isSkip = (c?.code === "SKIP");
         if (isSkip){
+          lockPK_(prodKey, PK_SKIP_LOCK_MS);
+  
           inc_("skip");
           renderTemCard_({
             prodKey,
             kind:"skip",
             temPrint: {
+              l4: prodKey,
               footer: { khgh:"", stt:"" },
               meta: { today: "" }
             },
             doneBadges: c?.doneBadges || [],
-            note: ""
+            note: "Công đoạn này đã được quét trước đó"
           });
-          setStatus_("skip", "⛔ ĐÃ CÓ - " + shortTem_(prodKey));
-          lockPK_(prodKey, PK_SKIP_LOCK_MS);
+          setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
           return;
         }
   
