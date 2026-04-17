@@ -1809,9 +1809,7 @@
           });
   
           showCheck_();
-          beepOk_();
-          vibOk_();
-          setStatus_("", "✓ Đã nhận - " + shortTem_(prodKey));
+          setStatus_("", "✅ Đã nhận mã - " + shortTem_(prodKey));
   
           LIVE_QUEUE.set(prodKey, { prodKey, step, worker });
           startBulkQueuePolling_();
