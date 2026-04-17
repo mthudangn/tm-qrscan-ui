@@ -1084,6 +1084,7 @@
     popupTitle.textContent = title || "";
     popupMsg.textContent = msg || "";
   }
+
   function hideCenterPopup(){
     centerPopup.className = "centerPopup";
     errorPopupOpen = false;
@@ -1563,56 +1564,8 @@
     }
   }
 
-  function startScanLoop_(){
-    scanLoopOn = true;
-  
-    const LOOP_MS = 70;
-  
-    async function tick(){
-      if (!scanLoopOn || !SCAN.running) return;
-  
-      if (!cameraReady || errorPopupOpen || SCAN.inflight) {
-        scanLoopTimer = setTimeout(tick, LOOP_MS);
-        return;
-      }
-  
-      try{
-        const raw = await detectBarcodeOnly_(video);
-  
-        if (raw){
-          const now = Date.now();
-          if (now - SCAN.lastHitTs >= SCAN.cooldownMs) {
-            SCAN.lastHitTs = now;
-  
-            const itemObj = extractItemPayload_(raw);
-            const prodKey = itemObj.prodKey;
-  
-            if (prodKey){
-              lastSeenTs = now;
-              if (isLockedPK_(prodKey)) {
-                setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
-              } else {
-                onScan_(itemObj);
-              }
-            }
-          }
-        }
-      } catch(e){
-        const msg = String(e?.message || "");
-        setStatus_("err", "⚠️ Giữ yên barcode trong khung / Lau camera");
-        console.warn("SCAN_ERR:", msg || e);
-      }
-  
-      scanLoopTimer = setTimeout(tick, LOOP_MS);
-    }
-  
-    tick();
-  }
-
-  function stopScanLoop_(){
-    scanLoopOn = false;
-    if (scanLoopTimer) { clearTimeout(scanLoopTimer); scanLoopTimer = null; }
-  }
+  function startScanLoop_(){}
+  function stopScanLoop_(){}
 
   async function startScanFlow_(){
     if (!CURRENT_CTX.pxk) {
@@ -1621,7 +1574,7 @@
     }
     return startScan();
   }
-  
+
   async function startScan(){
     const worker = String(wInfo.value||"").trim().toLowerCase();
     const step = String(stepSel.value||"").trim();
@@ -1645,40 +1598,76 @@
       const formatsToSupport = getBarcodeFormats_();
       const scanProfile = getScannerProfile_();
   
-      await html5Scanner.start(
-        { facingMode: { ideal: "environment" } },
-        {
-          fps: scanProfile.fps,
-          qrbox: scanProfile.qrbox,
-          aspectRatio: scanProfile.aspectRatio,
-          disableFlip: scanProfile.disableFlip,
-          formatsToSupport
-        },
-        (decodedText) => {
-          if (!SCAN.running || SCAN.inflight || errorPopupOpen) return;
+      const onDecoded = (decodedText) => {
+        if (!SCAN.running || SCAN.inflight || errorPopupOpen) return;
   
-          const raw = String(decodedText || "").trim();
-          if (!raw) return;
+        const raw = String(decodedText || "").trim();
+        if (!raw) return;
   
-          const now = Date.now();
-          if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
-          SCAN.lastHitTs = now;
+        const now = Date.now();
+        if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
+        SCAN.lastHitTs = now;
   
-          const itemObj = extractItemPayload_(raw);
-          const prodKey = itemObj.prodKey;
+        const itemObj = extractItemPayload_(raw);
+        const prodKey = itemObj.prodKey;
+        if (!prodKey) return;
   
-          if (!prodKey) return;
+        lastSeenTs = now;
   
-          lastSeenTs = now;
-          if (isLockedPK_(prodKey)) {
-            setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
-            return;
-          }
+        if (isLockedPK_(prodKey)) {
+          setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
+          return;
+        }
   
-          onScan_(itemObj);
-        },
-        () => {}
-      );
+        onScan_(itemObj);
+      };
+  
+      const onScanError = () => {};
+  
+      let started = false;
+  
+      // Ưu tiên gọi getCameras trước để iPhone bật popup xin quyền rõ ràng hơn
+      try{
+        const cameras = await Html5Qrcode.getCameras();
+        if (Array.isArray(cameras) && cameras.length){
+          const backCam =
+            cameras.find(c => /back|rear|environment|trước sau|sau/i.test(String(c.label || ""))) ||
+            cameras[cameras.length - 1];
+  
+          await html5Scanner.start(
+            backCam.id,
+            {
+              fps: scanProfile.fps,
+              qrbox: scanProfile.qrbox,
+              aspectRatio: scanProfile.aspectRatio,
+              disableFlip: scanProfile.disableFlip,
+              formatsToSupport
+            },
+            onDecoded,
+            onScanError
+          );
+          started = true;
+        }
+      }catch(err){
+        console.warn("getCameras/start by id failed:", err);
+      }
+  
+      // fallback nếu lấy camera ID không được
+      if (!started){
+        await html5Scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: scanProfile.fps,
+            qrbox: scanProfile.qrbox,
+            aspectRatio: scanProfile.aspectRatio,
+            disableFlip: scanProfile.disableFlip,
+            formatsToSupport
+          },
+          onDecoded,
+          onScanError
+        );
+        started = true;
+      }
   
       cameraReady = true;
       scannerReady = true;
@@ -1690,7 +1679,9 @@
           if (!SCAN.running) return;
           if (SCAN.inflight) return;
           if (centerPopup.classList.contains("show")) return;
-          if (Date.now() - lastSeenTs > 350 && !SCAN.inflight) setStatus_("", "");
+          if (Date.now() - lastSeenTs > 350 && !SCAN.inflight) {
+            setStatus_("", "");
+          }
         }, 180);
       }
   
@@ -1699,9 +1690,21 @@
       document.getElementById("scanCard")?.scrollIntoView({ behavior:"smooth", block:"start" });
   
     } catch(e){
-      stopScan();
       console.error(e);
-      showCenterPopup_("err", "❌ KHÔNG MỞ ĐƯỢC CAMERA", "Vui lòng kiểm tra quyền camera rồi thử lại.");
+      await stopScan();
+  
+      const msg = String(e?.message || e || "");
+      const openedFromCameraWebView =
+        /iphone|ipad|ipod/i.test(navigator.userAgent || "") &&
+        (window.navigator.standalone === false || document.referrer.includes("google.com"));
+  
+      showCenterPopup_(
+        "err",
+        "❌ KHÔNG MỞ ĐƯỢC CAMERA",
+        openedFromCameraWebView
+          ? "Hãy mở link này bằng Safari hoặc Chrome trực tiếp rồi thử lại.\n\nKhông mở từ màn hình preview của app Camera."
+          : "Vui lòng kiểm tra quyền camera rồi thử lại."
+      );
     }
   }
 
