@@ -490,9 +490,11 @@
       padding:10px;
       box-shadow:0 6px 14px rgba(2,24,43,.06);
     }
-    .temCard.ok{ border-color: rgba(64,210,204,.55); }
-    .temCard.skip{ border-color: rgba(255,143,122,.55); }
-    .temCard.err{ border-color: rgba(239,68,68,.55); }
+    .temCard.queued,
+    .temCard.processing{ border-color: rgba(245,158,11,.75); }   /* yellow */
+    .temCard.ok{ border-color: rgba(34,197,94,.72); }            /* green */
+    .temCard.skip{ border-color: rgba(59,130,246,.70); }         /* blue */
+    .temCard.err{ border-color: rgba(239,68,68,.72); }           /* red */
     
     .temBox{
       border:2px solid rgba(15,23,42,.22);
@@ -1119,25 +1121,41 @@
   }
 
   function renderTemCard_(payload){
-    const { prodKey, kind, temPrint, doneBadges = [] } = payload || {};
-    if (String(kind || "").toLowerCase() !== "ok") return;
-
+    const {
+      prodKey,
+      kind,
+      temPrint,
+      doneBadges = [],
+      note = ""
+    } = payload || {};
+  
+    const status = String(kind || "").toLowerCase() || "queued";
+  
     const l1 = temPrint?.l1 || "";
     const l2 = temPrint?.l2 || "";
     const l3 = temPrint?.l3 || "";
     const l4 = temPrint?.l4 || "";
     const l5 = temPrint?.l5 || "";
-    
+  
     const khgh = String(temPrint?.footer?.khgh || "").trim();
     const stt  = String(temPrint?.footer?.stt  || "").trim();
-
+  
     const meta = temPrint?.meta || {};
-    const stepLabel = meta.stepLabel || "";
     const today = meta.today || "";
-
+  
+    const statusLabelMap = {
+      queued: "🟡 Đã nhận",
+      processing: "🟡 Đang xử lý",
+      ok: "🟢 Hoàn tất",
+      skip: "🔵 Đã có",
+      err: "🔴 Lỗi"
+    };
+    const statusLabel = statusLabelMap[status] || "🟡 Đã nhận";
+  
     const card = document.createElement("div");
-    card.className = "temCard ok";
-
+    card.className = `temCard ${status}`;
+    card.dataset.prodKey = String(prodKey || "").trim();
+  
     card.innerHTML = `
       <div class="temBox">
         ${l1 ? `<div class="temLine temL1">${escapeHtml_(l1)}</div>` : ``}
@@ -1152,13 +1170,15 @@
           </div>
         ` : ``}
       </div>
-
+  
       <div class="temFooter">
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="temTag">${escapeHtml_(statusLabel)}</span>
           ${today ? `<span class="temTag">📋 ${escapeHtml_(today)}</span>` : ``}
+          ${note ? `<span class="temTag">${escapeHtml_(note)}</span>` : ``}
         </div>
       </div>
-
+  
       ${
         doneBadges.length
           ? `
@@ -1172,10 +1192,15 @@
           : ``
       }
     `;
-
-    temRow.appendChild(card);
-    while (temRow.children.length > 50) temRow.removeChild(temRow.firstChild);
-
+  
+    const existing = temRow.querySelector(`.temCard[data-prod-key="${CSS.escape(String(prodKey || "").trim())}"]`);
+    if (existing) {
+      existing.replaceWith(card);
+    } else {
+      temRow.appendChild(card);
+      while (temRow.children.length > 50) temRow.removeChild(temRow.firstChild);
+    }
+  
     temHint.textContent = "Quẹt ngang để xem";
     temRow.scrollTo({ left: temRow.scrollWidth, behavior: "smooth" });
   }
@@ -1273,6 +1298,97 @@
 
     const resp = await fetch(u.toString(), { method:"GET", cache:"no-store" });
     return await resp.json();
+  }
+
+  const LIVE_QUEUE = new Map();
+  let bulkPollTimer = null;
+  
+  function startBulkQueuePolling_(){
+    if (bulkPollTimer) return;
+  
+    bulkPollTimer = setInterval(async ()=>{
+      if (!LIVE_QUEUE.size) return;
+  
+      const items = Array.from(LIVE_QUEUE.values()).map(x => ({
+        prodKey: x.prodKey,
+        step: x.step,
+        workerInfo: x.worker
+      }));
+  
+      try{
+        const r = await apiGet_({
+          action: "queueStatusBulk",
+          items: JSON.stringify(items)
+        });
+  
+        const rows = Array.isArray(r?.items) ? r.items : [];
+        for (const it of rows){
+          const prodKey = String(it?.prodKey || "").trim();
+          if (!prodKey) continue;
+  
+          const status = String(it?.status || "").trim().toUpperCase();
+          const note = String(it?.note || "").trim();
+          const temStt = String(it?.temStt || "").trim();
+  
+          if (status === "PENDING" || status === "PROCESSING") {
+            renderTemCard_({
+              prodKey,
+              kind: "processing",
+              temPrint: it.temPrint,
+              doneBadges: it.doneBadges || [],
+              note: ""
+            });
+            continue;
+          }
+  
+          if (status === "DONE") {
+            renderTemCard_({
+              prodKey,
+              kind: "ok",
+              temPrint: it.temPrint,
+              doneBadges: it.doneBadges || [],
+              note: ""
+            });
+            LIVE_QUEUE.delete(prodKey);
+            continue;
+          }
+  
+          if (status === "SKIP") {
+            renderTemCard_({
+              prodKey,
+              kind: "skip",
+              temPrint: it.temPrint,
+              doneBadges: it.doneBadges || [],
+              note: ""
+            });
+            LIVE_QUEUE.delete(prodKey);
+            continue;
+          }
+  
+          if (status === "ERROR") {
+            renderTemCard_({
+              prodKey,
+              kind: "err",
+              temPrint: it.temPrint,
+              doneBadges: it.doneBadges || [],
+              note: note
+            });
+  
+            if (temStt) speakVi_(`Tem ${temStt} lỗi`);
+            else speakVi_("Có lỗi");
+  
+            LIVE_QUEUE.delete(prodKey);
+            continue;
+          }
+        }
+  
+        if (!LIVE_QUEUE.size && bulkPollTimer){
+          clearInterval(bulkPollTimer);
+          bulkPollTimer = null;
+        }
+  
+      }catch(e){}
+    }, 700);
   }
 
   // ===== load steps (guard when API_BASE missing) =====
@@ -1658,7 +1774,6 @@
       return;
     }
   
-    // QR mới: nếu có PXK trong mã thì phải khớp PXK đang chọn
     if (qrPxk && qrPxk !== String(CURRENT_PXK || "").trim().toUpperCase()) {
       inc_("err");
       setStatus_("err","⚠️ SAI PXK - " + shortTem_(prodKey));
@@ -1672,73 +1787,76 @@
     SCAN.inflight = true;
     showPendingStart_();
     setStatus_("", "⏳ Đang nhận mã… " + shortTem_(prodKey));
-    try{ navigator.vibrate?.(15); }catch(e){}
   
     apiGet_({ action:"commit", prodKey, step, workerInfo: worker, pxk: CURRENT_PXK })
       .then(c=>{
         clearTimeout(SCAN.phaseT);
         SCAN.phaseT = null;
   
-        if (c && c.ok){
-          inc_("ok");
-  
-          lockPK_(prodKey, PK_OK_LOCK_MS);
-  
-          return apiGet_({ action:"fetchTem", prodKey, step, workerInfo: worker, pxk: CURRENT_PXK })
-            .then(f=>{
-              if (f && f.ok){
-                renderTemCard_({
-                  prodKey: prodKey,
-                  kind:"ok",
-                  temPrint: f.temPrint,
-                  doneBadges: f.doneBadges || c.doneBadges || []
-                });
-  
-                showCheck_();
-                speakVi_("THÀNH CÔNG");
-              } else {
-                throw new Error("FETCH_TEM_FAILED");
-              }
-            })
-            .catch(_=>{})
-            .finally(()=>{
-              SCAN.inflight = false;
-              showPendingStop_();
-            });
-        }
-
-        // non-ok case
         SCAN.inflight = false;
         showPendingStop_();
-
+  
+        if (c && c.ok && c.code === "QUEUED"){
+          renderTemCard_({
+            prodKey,
+            kind:"queued",
+            temPrint: {
+              footer: { khgh:"", stt:"" },
+              meta: { today: "" }
+            },
+            doneBadges: [],
+            note: ""
+          });
+  
+          showCheck_();
+          beepOk_();
+          vibOk_();
+          setStatus_("", "✓ Đã nhận - " + shortTem_(prodKey));
+  
+          LIVE_QUEUE.set(prodKey, { prodKey, step, worker });
+          startBulkQueuePolling_();
+  
+          lockPK_(prodKey, PK_OK_LOCK_MS);
+          return;
+        }
+  
         const msg = String(c?.msg || "ERROR");
         const isSkip = (c?.code === "SKIP");
         if (isSkip){
           inc_("skip");
-          setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
-          speakVi_("ĐÃ QUÉT");
+          renderTemCard_({
+            prodKey,
+            kind:"skip",
+            temPrint: {
+              footer: { khgh:"", stt:"" },
+              meta: { today: "" }
+            },
+            doneBadges: c?.doneBadges || [],
+            note: ""
+          });
+          setStatus_("skip", "⛔ ĐÃ CÓ - " + shortTem_(prodKey));
           lockPK_(prodKey, PK_SKIP_LOCK_MS);
           return;
         }
-
+  
         inc_("err");
-        setStatus_("err","⚠️ LỖI -" + msg);
-        vibErr_();
+        setStatus_("err","⚠️ LỖI - " + msg);
         showToast_("⚠️ " + msg, "warn");
+        speakVi_("Có lỗi");
       })
       .catch(err=>{
         clearTimeout(SCAN.phaseT);
         SCAN.phaseT = null;
-
+  
         SCAN.inflight = false;
         showPendingStop_();
-
+  
         inc_("err");
         const msg = String(err?.message || "Unknown");
-        setStatus_("err","⚠️ LỖI -", msg);
-        vibErr_();
-
+        setStatus_("err","⚠️ LỖI - " + msg);
+  
         showCenterPopup_("err", "⚠️ LỖI HỆ THỐNG \nKhông gửi được dữ liệu. QUÉT LẠI.");
+        speakVi_("Có lỗi");
         lockPK_(prodKey, PK_TIMEOUT_LOCK_MS);
       });
   }
