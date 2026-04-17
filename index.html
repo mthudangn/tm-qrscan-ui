@@ -979,6 +979,12 @@
     });
   }
 
+  let CURRENT_CTX = {
+    pxk: "",
+    company: "",
+    dateText: ""
+  };
+
   const btnPlay  = document.getElementById("btnPlay");
   const btnStop  = document.getElementById("btnStop");
   const camWrapEl = document.getElementById("camWrap");
@@ -1470,12 +1476,6 @@
   }
 
   // ===== scan state =====
-  let CURRENT_CTX = {
-    pxk: "",
-    company: "",
-    dateText: ""
-  };
-
   const SCAN = {
     running:false,
     inflight:false,
@@ -1793,7 +1793,7 @@
     showPendingStart_();
     setStatus_("", "⏳ Đang nhận mã… " + shortTem_(prodKey));
   
-    apiGet_({ action:"commit", prodKey, step, workerInfo: worker, pxk: CURRENT_PXK })
+    apiGet_({ action:"commit", prodKey, step, workerInfo: worker, pxk: CURRENT_CTX.pxk })
       .then(c=>{
         clearTimeout(SCAN.phaseT);
         SCAN.phaseT = null;
