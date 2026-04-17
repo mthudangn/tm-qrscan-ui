@@ -362,6 +362,18 @@
       max-width:360px;
       margin:0 auto;
       height: 240px;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
+    }
+    .camWrap::after{
+      content:"";
+      position:absolute;
+      left:10%;
+      right:10%;
+      top:50%;
+      height:2px;
+      background: rgba(255,255,255,.7);
+      border-radius:2px;
+      transform: translateY(-50%);
     }
     .camWrap video,
     #reader{
@@ -370,18 +382,6 @@
       display:block;
       background:#000;
       object-fit: cover;
-    }
-    .overlay{
-      position:absolute; inset:0;
-      display:flex; align-items:center; justify-content:center;
-      pointer-events:none;
-    }
-    .box{
-      width:min(82%, 300px);
-      height:min(34%, 92px);
-      border-radius:18px;
-      border:3px solid rgba(255,255,255,.82);
-      box-shadow:0 0 0 999px rgba(0,0,0,.18);
     }
     .playOverlay{
       position:absolute;
@@ -866,7 +866,6 @@
 
     <div class="camWrap" id="camWrap">
       <div id="reader" style="width:100%;height:100%;"></div>
-      <div class="overlay"><div class="box"></div></div>
 
       <div class="playOverlay" id="playOverlay">
         <button class="playBtn" id="btnPlay" onclick="startScanFlow_()" aria-label="Start scanning">
@@ -935,14 +934,18 @@
       return {
         fps: 8,
         qrbox: { width: 260, height: 90 },
-        disableFlip: false
+        aspectRatio: 1.7778,
+        disableFlip: false,
+        showTorchButtonIfSupported: false
       };
     }
   
     return {
       fps: 10,
       qrbox: { width: 280, height: 90 },
-      disableFlip: false
+      aspectRatio: 1.7778,
+      disableFlip: false,
+      showTorchButtonIfSupported: false
     };
   }
 
@@ -1589,6 +1592,39 @@
     wInfo.disabled    = on;
   }
 
+  function flashBarcodeBox_(){
+    const box = document.querySelector(".box");
+    if (!box) return;
+  
+    box.classList.remove("flash-ok");
+    void box.offsetWidth;
+    box.classList.add("flash-ok");
+  
+    clearTimeout(flashBarcodeBox_._t);
+    flashBarcodeBox_._t = setTimeout(() => {
+      box.classList.remove("flash-ok");
+    }, 220);
+  }
+  
+  function hideHtml5QrcodeExtraUi_(){
+    // bỏ các lớp overlay / shaded region mặc định của lib nếu có
+    const root = document.getElementById("reader");
+    if (!root) return;
+  
+    root.querySelectorAll("canvas").forEach(el => {
+      el.style.display = "none";
+    });
+  
+    root.querySelectorAll("[class]").forEach(el => {
+      const cls = String(el.className || "");
+      if (
+        /qr-shaded-region|qr-region|scan-region|highlight/i.test(cls)
+      ) {
+        el.style.display = "none";
+      }
+    });
+  }
+
   // ===== camera loop (same) =====
   let scanLoopOn = false;
   let scanLoopTimer = null;
@@ -1637,16 +1673,30 @@
       const formatsToSupport = getBarcodeFormats_();
       const scanProfile = getScannerProfile_();
   
-      const onDecoded = (decodedText) => {
+      const onDecoded = (decodedText, decodedResult) => {
         if (!SCAN.running || SCAN.inflight || errorPopupOpen) return;
-  
+      
         const raw = String(decodedText || "").trim();
         if (!raw) return;
+      
+        const fmt =
+          String(
+            decodedResult?.result?.format?.formatName ||
+            decodedResult?.result?.format ||
+            decodedResult?.decodedResult?.result?.format?.formatName ||
+            ""
+          ).toUpperCase();
+      
+        // chặn QR ngay từ callback
+        if (fmt.includes("QR")) return;
         
         // BỎ QUA QR master / URL / mã không đúng format barcode item
         if (!isLikelyItemBarcode_(raw)) {
           return;
         }
+        
+        // flash đúng vùng barcode khi chỉ khi đã pass filter
+        flashBarcodeBox_();
         
         const now = Date.now();
         if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
@@ -1686,7 +1736,10 @@
               qrbox: scanProfile.qrbox,
               aspectRatio: scanProfile.aspectRatio,
               disableFlip: scanProfile.disableFlip,
-              formatsToSupport
+              formatsToSupport,
+              experimentalFeatures: {
+                useBarCodeDetectorIfSupported: true
+              }
             },
             onDecoded,
             onScanError
@@ -1706,7 +1759,10 @@
             qrbox: scanProfile.qrbox,
             aspectRatio: scanProfile.aspectRatio,
             disableFlip: scanProfile.disableFlip,
-            formatsToSupport
+            formatsToSupport,
+            experimentalFeatures: {
+              useBarCodeDetectorIfSupported: true
+            }
           },
           onDecoded,
           onScanError
@@ -1718,6 +1774,7 @@
       scannerReady = true;
       lastSeenTs = Date.now();
       camWrapEl?.classList.add("scanning");
+      hideHtml5QrcodeExtraUi_();
   
       if (!liveClearLoop){
         liveClearLoop = setInterval(() => {
