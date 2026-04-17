@@ -842,12 +842,8 @@
       border-radius:8px;
       color:#43b3ae;
     ">
-      Chưa nhập PXK ID
+      Chưa quét mã chủ PXK ID
     </div>
-    
-    <button class="btn secondary" style="font-weight:1000; margin-top:10px; color:#f88375;" onclick="changePxk_()">
-      ✏️ Nhập mã PXK
-    </button>
   </div>
 
   <div class="card scanPanel" id="scanCard">
@@ -924,8 +920,20 @@
   }
   
   function loadApiBase_(){
-    // 1) ưu tiên query param ?api=...
     const qs = new URLSearchParams(location.search);
+  
+    // QR Master inject context ngay khi mở app
+    const pxk = String(qs.get("pxk") || "").trim().toUpperCase();
+    const co  = String(qs.get("co")  || "").trim();
+    const dt  = String(qs.get("dt")  || "").trim();
+  
+    if (pxk){
+      CURRENT_CTX.pxk = pxk;
+      CURRENT_CTX.company = co;
+      CURRENT_CTX.dateText = dt;
+    }
+  
+    // 1) ưu tiên query param ?api=...
     const u1 = qs.get("api") || qs.get("exec") || qs.get("base") || "";
     if (u1){
       const u = normalizeExecUrl_(u1);
@@ -966,7 +974,7 @@
         document.getElementById("step").disabled       = true;
         document.getElementById("wInfo").disabled      = true;
         document.getElementById("statusBig").textContent =
-          "❌ Chưa có link deploy mã QR cho PXK này. ⛔️ Hãy báo văn phòng bấm Setup gấp !";
+          "❌ Chưa có QR chủ hợp lệ hoặc chưa set link deploy. ⛔️ Báo văn phòng ngay!";
       }catch(e){}
     });
   }
@@ -1436,33 +1444,37 @@
   function renderCurrentPxk_(){
     const el = document.getElementById("pxkCurrent");
     if (!el) return;
-    el.textContent = CURRENT_PXK ? `PXK hiện tại: ${CURRENT_PXK}` : "Chưa nhập PXK ID";
+  
+    if (!CURRENT_CTX.pxk){
+      el.textContent = "Chưa quét mã chủ";
+      return;
+    }
+  
+    const co = CURRENT_CTX.company || "-";
+    const dt = CURRENT_CTX.dateText || "-";
+  
+    el.innerHTML = `
+      <div>PXK: ${escapeHtml_(CURRENT_CTX.pxk)}</div>
+      <div>CTY: ${escapeHtml_(co)}</div>
+      <div>Ngày: ${escapeHtml_(dt)}</div>
+    `;
   }
   
   async function promptPxkBeforeScan_(){
-    const pxk = String(window.prompt("Nhập mã PXK cần quét:", CURRENT_PXK || "") || "").trim().toUpperCase();
-    if (!pxk) return false;
-  
-    const res = await apiGet_({ action:"checkPxk", pxk });
-    console.log("checkPxk =", res);
-
-    if (!res || !res.ok) {
-      let msg = "❌ PXK không tồn tại hoặc không hợp lệ";
-      if (res?.code === "PXK_CLOSED") msg = "✅ PXK này đã hoàn tất nhập kho, không cần quét thêm";
-      else if (res?.code === "PXK_NOT_FOUND") msg = "❌ PXK không tồn tại";
-      else if (res?.msg) msg = `❌ ${res.msg}`;
-
-      showToast_(msg, "err");
+    if (!CURRENT_CTX.pxk){
+      showToast_("❌ Chưa quét mã chủ", "err");
+      speakVi_("Chưa quét mã chủ");
       return false;
     }
-  
-    CURRENT_PXK = res.pxk || pxk;
-    renderCurrentPxk_();
     return true;
   }
 
   // ===== scan state =====
-  let CURRENT_PXK = "";
+  let CURRENT_CTX = {
+    pxk: "",
+    company: "",
+    dateText: ""
+  };
 
   const SCAN = {
     running:false,
@@ -1517,17 +1529,7 @@
       throw new Error("getUserMedia is not available in this browser.");
     }
   }
-  async function changePxk_(){
-    if (SCAN.running) {
-      showToast_("⛔️ STOP camera trước khi đổi PXK", "err");
-      return;
-    }
-  
-    const ok = await promptPxkBeforeScan_();
-    if (!ok) return;
-  
-    showToast_("✅ Đã đổi PXK", "ok");
-  }
+
   async function openCameraOnce_(){
     // Ưu tiên camera sau trước, KHÔNG dùng video:true ở try đầu
     const tries = [
@@ -1642,7 +1644,7 @@
   }
 
   async function startScanFlow_(){
-    if (!CURRENT_PXK) {
+    if (!CURRENT_CTX.pxk) {
       const ok = await promptPxkBeforeScan_();
       if (!ok) return;
     }
@@ -1768,16 +1770,20 @@
     const step = String(stepSel.value || "").trim();
     const worker = String(wInfo.value || "").trim().toLowerCase();
   
-    if (!CURRENT_PXK) {
+    if (!CURRENT_CTX.pxk) {
       showToast_("❌ Chưa nhập PXK ID", "err");
       return;
     }
   
-    if (qrPxk && qrPxk !== String(CURRENT_PXK || "").trim().toUpperCase()) {
+    if (qrPxk && qrPxk !== String(CURRENT_CTX.pxk || "").trim().toUpperCase()) {
       inc_("err");
-      setStatus_("err","⚠️ SAI PXK - " + shortTem_(prodKey));
+      setStatus_("err","❌ Sai phiếu");
       vibErr_();
-      showToast_(`❌ Mã thuộc PXK ${qrPxk}, không phải PXK hiện tại ${CURRENT_PXK}`, "err");
+    
+      const brief = `${CURRENT_CTX.company || CURRENT_CTX.pxk} - ${CURRENT_CTX.dateText || ""}`.trim().replace(/\s+-\s*$/, "");
+      showToast_(`❌ Sai phiếu\nChỉ quét phiếu: ${brief}`, "err");
+    
+      speakVi_(`Sai phiếu. Chỉ quét phiếu ${CURRENT_CTX.company} ${CURRENT_CTX.dateText || ""}`);
       return;
     }
   
