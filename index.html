@@ -1800,11 +1800,12 @@
             prodKey,
             kind:"queued",
             temPrint: {
+              l4: prodKey, // 👈 thêm dòng này
               footer: { khgh:"", stt:"" },
               meta: { today: "" }
             },
             doneBadges: [],
-            note: ""
+            note: "Đang lấy thông tin tem..." // 👈 thêm dòng này
           });
   
           showCheck_();
