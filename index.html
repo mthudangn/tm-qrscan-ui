@@ -985,7 +985,14 @@
 
   function getBarcodeFormats_(){
     return [
+      // ưu tiên 1D phổ biến cho tem hàng
       Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.CODABAR,
+      Html5QrcodeSupportedFormats.ITF,
+  
+      // retail formats
       Html5QrcodeSupportedFormats.EAN_13,
       Html5QrcodeSupportedFormats.EAN_8,
       Html5QrcodeSupportedFormats.UPC_A,
@@ -1215,16 +1222,26 @@
   function isLikelyItemBarcode_(text){
     const s = String(text || "").trim();
     if (!s) return false;
-  
-    // Chỉ nhận barcode item dạng prodKey:
-    // HV03042026|KOINSHOESB|39/3
-    // hoặc có hậu tố duplicate:
-    // HV03042026|KOINSHOESB|39/3#1
     if (isLikelyMasterQr_(s)) return false;
   
-    return /^[A-Z0-9]+\|[A-Z0-9]+\|[^|#]+(?:#\d+)?$/i.test(s);
-  }
+    // phải có ít nhất 2 dấu |
+    const parts = s.split("|");
+    if (parts.length < 3) return false;
   
+    const pxkId = String(parts[0] || "").trim();
+    const tenSp = String(parts[1] || "").trim();
+    const rest  = String(parts.slice(2).join("|") || "").trim();
+  
+    if (!pxkId || !tenSp || !rest) return false;
+  
+    // nới cho thực tế scan: cho phép chữ/số và vài ký tự thường gặp
+    if (!/^[A-Z0-9]+$/i.test(pxkId)) return false;
+    if (!/^[A-Z0-9 _.\-\/]+$/i.test(tenSp)) return false;
+    if (!/^[^#]+(?:#\d+)?$/i.test(rest)) return false;
+  
+    return true;
+  }
+    
   function extractItemPayload_(text){
     const s = String(text || "").trim();
     if (!s) return { pxkId:"", prodKey:"", raw:"" };
@@ -1761,53 +1778,88 @@
       const onScanError = () => {};
   
       let started = false;
-  
-      // Ưu tiên gọi getCameras trước để iPhone bật popup xin quyền rõ ràng hơn
-      try{
-        const cameras = await Html5Qrcode.getCameras();
-        if (Array.isArray(cameras) && cameras.length){
-          const backCam =
-            cameras.find(c => /back|rear|environment|trước sau|sau/i.test(String(c.label || ""))) ||
-            cameras[cameras.length - 1];
-  
-          await html5Scanner.start(
-            backCam.id,
-            {
-              fps: scanProfile.fps,
-              qrbox: scanProfile.qrbox,
-              aspectRatio: scanProfile.aspectRatio,
-              disableFlip: scanProfile.disableFlip,
-              formatsToSupport,
-              experimentalFeatures: {
-                useBarCodeDetectorIfSupported: false
-              }
-            },
-            onDecoded,
-            onScanError
-          );
-          started = true;
+      
+      function cameraRank_(cam){
+        const label = String(cam?.label || "").toLowerCase();
+      
+        // ưu tiên camera sau "1x / wide" vì barcode gần thường nét hơn ultra-wide
+        if (/back|rear|environment|sau/.test(label)) {
+          if (/wide|1x|main|standard/.test(label)) return 100;
+          if (/tele|zoom|2x|3x/.test(label)) return 80;
+          if (/ultra|ultra-wide|0\.5|macro/.test(label)) return 40;
+          return 70;
         }
-      }catch(err){
-        console.warn("getCameras/start by id failed:", err);
+      
+        if (/front|user|trước/.test(label)) return 0;
+        return 10;
       }
-  
-      // fallback nếu lấy camera ID không được
-      if (!started){
+      
+      function scanConfig_(useDetector){
+        return {
+          fps: scanProfile.fps,
+          qrbox: scanProfile.qrbox,
+          aspectRatio: scanProfile.aspectRatio,
+          disableFlip: true,
+          formatsToSupport,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: useDetector
+          }
+        };
+      }
+      
+      async function startWithCameraId_(cameraId, useDetector){
         await html5Scanner.start(
-          { facingMode: "environment" },
-          {
-            fps: scanProfile.fps,
-            qrbox: scanProfile.qrbox,
-            aspectRatio: scanProfile.aspectRatio,
-            disableFlip: scanProfile.disableFlip,
-            formatsToSupport,
-            experimentalFeatures: {
-              useBarCodeDetectorIfSupported: false
-            }
-          },
+          cameraId,
+          scanConfig_(useDetector),
           onDecoded,
           onScanError
         );
+      }
+      
+      async function startWithFacingMode_(useDetector){
+        await html5Scanner.start(
+          { facingMode: { exact: "environment" } },
+          scanConfig_(useDetector),
+          onDecoded,
+          onScanError
+        );
+      }
+      
+      try{
+        const cameras = await Html5Qrcode.getCameras();
+      
+        if (Array.isArray(cameras) && cameras.length){
+          const sorted = [...cameras].sort((a, b) => cameraRank_(b) - cameraRank_(a));
+          console.log("CAMERAS =", sorted.map(c => ({ id: c.id, label: c.label })));
+      
+          // thử lần lượt camera tốt nhất trước
+          for (const cam of sorted) {
+            try{
+              // Android/Chrome thường khá tốt với detector mới
+              await startWithCameraId_(cam.id, !detectRuntime_().isIOS);
+              started = true;
+              break;
+            }catch(e){
+              console.warn("startWithCameraId failed:", cam?.label, e);
+            }
+          }
+        }
+      }catch(err){
+        console.warn("getCameras failed:", err);
+      }
+      
+      if (!started){
+        try{
+          await startWithFacingMode_(!detectRuntime_().isIOS);
+          started = true;
+        }catch(e){
+          console.warn("facingMode start failed:", e);
+        }
+      }
+      
+      if (!started){
+        // fallback cuối cùng cho iPhone: ép dùng zxing, tránh BarcodeDetector nếu nó đọc 1D kém
+        await startWithFacingMode_(false);
         started = true;
       }
   
@@ -1816,6 +1868,35 @@
       lastSeenTs = Date.now();
       camWrapEl?.classList.add("scanning");
       hideHtml5QrcodeExtraUi_();
+
+      try{
+        const track = html5Scanner.getRunningTrack?.();
+        const caps = track?.getCapabilities ? track.getCapabilities() : null;
+      
+        if (track && caps) {
+          const adv = {};
+      
+          if (typeof caps.zoom?.max === "number" && caps.zoom.max >= 2) {
+            adv.zoom = Math.min(2, caps.zoom.max);
+          }
+      
+          if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
+            adv.focusMode = "continuous";
+          }
+      
+          if (caps.torch) {
+            // chỉ bật torch nếu môi trường tối; tạm thời để false mặc định
+            // adv.torch = true;
+          }
+      
+          if (Object.keys(adv).length) {
+            await track.applyConstraints({ advanced: [adv] });
+            console.log("Applied camera constraints:", adv);
+          }
+        }
+      }catch(e){
+        console.warn("Camera tuning skipped:", e);
+      }
   
       if (!liveClearLoop){
         liveClearLoop = setInterval(() => {
