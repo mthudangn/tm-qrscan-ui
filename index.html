@@ -1656,85 +1656,64 @@
       hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
       
       codeReader = new ZXing.BrowserMultiFormatReader(hints);
-  
-      const videoInputDevices = await codeReader.listVideoInputDevices();
       
-      const scored = [...videoInputDevices].sort((a, b) => {
-        const la = String(a?.label || "").toLowerCase();
-        const lb = String(b?.label || "").toLowerCase();
-      
-        const score = (s) => {
-          if (/back|rear|environment|sau/.test(s)) {
-            if (/wide|main|1x|standard/.test(s)) return 100;
-            if (/tele|zoom|2x|3x/.test(s)) return 70;
-            if (/ultra|ultra-wide|0\.5|macro/.test(s)) return 30;
-            return 80;
-          }
-          if (/front|user|truoc|trước/.test(s)) return 0;
-          return 10;
-        };
-      
-        return score(lb) - score(la);
-      });
-      
-      const selectedDeviceId = scored[0]?.deviceId;
-      console.log("VIDEO INPUTS =", scored.map(d => ({ label: d.label, id: d.deviceId })));
-  
+      readerEl.innerHTML = "";
       const video = document.createElement("video");
       video.setAttribute("autoplay", true);
       video.setAttribute("playsinline", true);
       video.setAttribute("muted", true);
-      
-      readerEl.innerHTML = "";
       readerEl.appendChild(video);
       
-      activeStream = await navigator.mediaDevices.getUserMedia({
+      const constraints = {
         audio: false,
         video: {
-          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-          facingMode: "environment",
+          facingMode: { ideal: "environment" },
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
-      });
+      };
       
-      video.srcObject = activeStream;
-      await video.play();
+      await codeReader.decodeFromConstraints(constraints, video, (result, err, controls) => {
+        if (!SCAN.running || SCAN.inflight) return;
       
-      codeReader.decodeFromVideoElement(video, (result, err) => {
-        if (!result || !SCAN.running || SCAN.inflight) return;
-  
-        const raw = result.getText();
-  
-        if (!isLikelyItemBarcode_(raw)) return;
-  
-        flashBarcodeBox_();
-  
-        const now = Date.now();
-        if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
-        SCAN.lastHitTs = now;
-  
-        const itemObj = extractItemPayload_(raw);
-        const prodKey = itemObj.prodKey;
-  
-        if (!prodKey) return;
-  
-        if (isLockedPK_(prodKey)) {
-          setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
-          return;
+        if (result) {
+          const raw = result.getText();
+      
+          if (!isLikelyItemBarcode_(raw)) return;
+      
+          flashBarcodeBox_();
+      
+          const now = Date.now();
+          if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
+          SCAN.lastHitTs = now;
+      
+          const itemObj = extractItemPayload_(raw);
+          const prodKey = itemObj.prodKey;
+      
+          if (!prodKey) return;
+      
+          if (isLockedPK_(prodKey)) {
+            setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
+            return;
+          }
+      
+          onScan_(itemObj);
         }
-  
-        onScan_(itemObj);
+      
+        if (controls) {
+          activeStream = controls;
+        }
       });
-  
+      
       camWrapEl?.classList.add("scanning");
-  
+      
       setStatus_("", "📷 Đang quét barcode...");
       showToast_("📷 CAMERA ON — ZXING MODE", "ok");
   
     }catch(e){
-      console.error(e);
-      setStatus_("err", "❌ Không mở được camera");
+      console.error("CAMERA OPEN ERROR =", e);
+      const msg = String(e?.name || e?.message || e || "Unknown");
+      setStatus_("err", "❌ Không mở được camera: " + msg);
     }
   }
 
@@ -1754,8 +1733,8 @@
     }catch(e){}
     
     try{
-      if (activeStream){
-        activeStream.getTracks().forEach(t => t.stop());
+      if (activeStream && typeof activeStream.stop === "function"){
+        activeStream.stop();
       }
     }catch(e){}
     
