@@ -1643,7 +1643,24 @@
       codeReader = new ZXing.BrowserMultiFormatReader();
   
       const videoInputDevices = await codeReader.listVideoInputDevices();
-      const selectedDeviceId = videoInputDevices[0]?.deviceId;
+      
+      const scoredDevices = [...videoInputDevices].sort((a, b) => {
+        const score = (label) => {
+          const s = String(label || "").toLowerCase();
+          if (/back|rear|environment|sau/.test(s)) {
+            if (/wide|main|1x|standard/.test(s)) return 100;
+            if (/tele|zoom|2x|3x/.test(s)) return 70;
+            if (/ultra|ultra-wide|0\.5|macro/.test(s)) return 30;
+            return 80;
+          }
+          if (/front|user|truoc|trước/.test(s)) return 0;
+          return 10;
+        };
+        return score(b.label) - score(a.label);
+      });
+      
+      const selectedDeviceId = scoredDevices[0]?.deviceId;
+      console.log("VIDEO INPUTS =", scoredDevices.map(d => ({ id: d.deviceId, label: d.label })));
   
       const video = document.createElement("video");
       video.setAttribute("autoplay", true);
