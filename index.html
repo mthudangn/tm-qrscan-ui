@@ -361,7 +361,7 @@
       width:100%;
       max-width:360px;
       margin:0 auto;
-      height: 90px;
+      height: 130px;
       box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
       transition:
         border-color .12s ease,
@@ -372,8 +372,8 @@
       position:absolute;
       left:50%;
       top:50%;
-      width:min(84%, 320px);
-      height:60px;
+      width:min(86%, 330px);
+      height:84px;
       transform:translate(-50%, -50%);
       border:3px solid rgba(255,255,255,.88);
       border-radius:14px;
@@ -944,6 +944,7 @@
 <script src="https://unpkg.com/@zxing/browser@latest"></script>
 <script>
   let codeReader = null;
+  let activeStream = null;
 </script>
 
 <script>
@@ -1534,7 +1535,7 @@
     el.innerHTML = `
       <div style="text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%;">
         <div>PXK: ${escapeHtml_(CURRENT_CTX.pxk)}</div>
-        <div>${escapeHtml_(co)} -🚚- ${escapeHtml_(dt)}</div>
+        <div>${escapeHtml_(co)} 🚚 ${escapeHtml_(dt)}</div>
       </div>
     `;
   }
@@ -1552,7 +1553,7 @@
   const SCAN = {
     running:false,
     inflight:false,
-    cooldownMs: 39,
+    cooldownMs: 180
     lastHitTs: 0,
     ok:0, skip:0, err:0
   };
@@ -1640,13 +1641,29 @@
     try{
       SCAN.running = true;
   
-      codeReader = new ZXing.BrowserMultiFormatReader();
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.CODE_128,
+        ZXing.BarcodeFormat.CODE_39,
+        ZXing.BarcodeFormat.CODE_93,
+        ZXing.BarcodeFormat.CODABAR,
+        ZXing.BarcodeFormat.ITF,
+        ZXing.BarcodeFormat.EAN_13,
+        ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.UPC_E
+      ]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      
+      codeReader = new ZXing.BrowserMultiFormatReader(hints);
   
       const videoInputDevices = await codeReader.listVideoInputDevices();
       
-      const scoredDevices = [...videoInputDevices].sort((a, b) => {
-        const score = (label) => {
-          const s = String(label || "").toLowerCase();
+      const scored = [...videoInputDevices].sort((a, b) => {
+        const la = String(a?.label || "").toLowerCase();
+        const lb = String(b?.label || "").toLowerCase();
+      
+        const score = (s) => {
           if (/back|rear|environment|sau/.test(s)) {
             if (/wide|main|1x|standard/.test(s)) return 100;
             if (/tele|zoom|2x|3x/.test(s)) return 70;
@@ -1656,20 +1673,35 @@
           if (/front|user|truoc|trước/.test(s)) return 0;
           return 10;
         };
-        return score(b.label) - score(a.label);
+      
+        return score(lb) - score(la);
       });
       
-      const selectedDeviceId = scoredDevices[0]?.deviceId;
-      console.log("VIDEO INPUTS =", scoredDevices.map(d => ({ id: d.deviceId, label: d.label })));
+      const selectedDeviceId = scored[0]?.deviceId;
+      console.log("VIDEO INPUTS =", scored.map(d => ({ label: d.label, id: d.deviceId })));
   
       const video = document.createElement("video");
       video.setAttribute("autoplay", true);
       video.setAttribute("playsinline", true);
-  
+      video.setAttribute("muted", true);
+      
       readerEl.innerHTML = "";
       readerEl.appendChild(video);
-  
-      codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
+      
+      activeStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      
+      video.srcObject = activeStream;
+      await video.play();
+      
+      codeReader.decodeFromVideoElement(video, (result, err) => {
         if (!result || !SCAN.running || SCAN.inflight) return;
   
         const raw = result.getText();
@@ -1708,7 +1740,6 @@
 
   async function stopScan(){
     cameraReady = false;
-    scannerReady = false;
     SCAN.running = false;
     SCAN.inflight = false;
     showPendingStop_();
@@ -1721,7 +1752,21 @@
         codeReader.reset();
       }
     }catch(e){}
+    
+    try{
+      if (activeStream){
+        activeStream.getTracks().forEach(t => t.stop());
+      }
+    }catch(e){}
+    
+    const video = readerEl.querySelector("video");
+    if (video){
+      try{ video.pause(); }catch(e){}
+      video.srcObject = null;
+    }
+    
     codeReader = null;
+    activeStream = null;
   
     camWrapEl?.classList.remove("scanning");
   
