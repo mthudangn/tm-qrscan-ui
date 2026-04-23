@@ -941,64 +941,9 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 <script>
-  let html5Scanner = null;
-  let scannerReady = false;
-
-  function detectRuntime_(){
-    const ua = navigator.userAgent || "";
-    const platform = navigator.userAgentData?.platform || "";
-
-    const isIOS =
-      /iPhone|iPad|iPod/i.test(ua) ||
-      /iPhone|iPad|iPod/i.test(platform);
-
-    const isAndroid =
-      /Android/i.test(ua) ||
-      /Android/i.test(platform);
-
-    return { isIOS, isAndroid };
-  }
-
-  function getScannerProfile_(){
-    const rt = detectRuntime_();
-  
-    if (rt.isIOS) {
-      return {
-        fps: 10,
-        qrbox: { width: 300, height: 56 },
-        aspectRatio: 1.7778,
-        disableFlip: false,
-        showTorchButtonIfSupported: false
-      };
-    }
-  
-    return {
-      fps: 12,
-      qrbox: { width: 320, height: 56 },
-      aspectRatio: 1.7778,
-      disableFlip: false,
-      showTorchButtonIfSupported: false
-    };
-  }
-
-  function getBarcodeFormats_(){
-    return [
-      // ưu tiên 1D phổ biến cho tem hàng
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.CODABAR,
-      Html5QrcodeSupportedFormats.ITF,
-  
-      // retail formats
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E
-    ];
-  }
+  let codeReader = null;
 </script>
 
 <script>
@@ -1656,29 +1601,6 @@
       box.classList.remove("flash-ok");
     }, 220);
   }
-  
-  function hideHtml5QrcodeExtraUi_(){
-    const root = document.getElementById("reader");
-    if (!root) return;
-  
-    root.querySelectorAll("canvas").forEach(el => {
-      el.style.display = "none";
-    });
-  
-    root.querySelectorAll("*").forEach(el => {
-      const cls = String(el.className || "");
-      const id  = String(el.id || "");
-  
-      if (
-        /qr-shaded-region|qr-region|scan-region|highlight|shade|overlay/i.test(cls) ||
-        /qr-shaded-region|qr-region|scan-region|highlight|shade|overlay/i.test(id)
-      ) {
-        el.style.display = "none";
-        el.style.opacity = "0";
-        el.style.pointerEvents = "none";
-      }
-    });
-  }
 
   // ===== camera loop (same) =====
   let scanLoopOn = false;
@@ -1708,64 +1630,45 @@
   async function startScan(){
     const worker = String(wInfo.value||"").trim().toLowerCase();
     const step = String(stepSel.value||"").trim();
-    if (!worker){ wInfo.focus(); return; }
-    if (!step){ showToast_("⚠️ Chọn công đoạn trước khi quét barcode", "warn"); stepSel.focus(); return; }
   
-    saveWorker_(worker);
-    ensureAudioCtx_();
-    unlockVoice_();
-    speechSynthesis.getVoices();
-    speakVi_("CHUẨN BỊ CAMERA QUÉT LIÊN TỤC VÀ CANH BARCODE VỮNG TRONG KHUNG NGANG");
+    if (!worker){ wInfo.focus(); return; }
+    if (!step){ stepSel.focus(); return; }
   
     lockUI_(true);
     setStatus_("", "⏳ Đang bật camera...");
   
     try{
       SCAN.running = true;
-      assertSecureContext_();
   
-      html5Scanner = new Html5Qrcode("reader");
-      const formatsToSupport = getBarcodeFormats_();
-      const scanProfile = getScannerProfile_();
+      codeReader = new ZXing.BrowserMultiFormatReader();
   
-      const onDecoded = (decodedText, decodedResult) => {
-        if (!SCAN.running || SCAN.inflight || errorPopupOpen) return;
-      
-        const raw = String(decodedText || "").trim();
-        if (!raw) return;
-      
-        const fmt =
-          String(
-            decodedResult?.result?.format?.formatName ||
-            decodedResult?.result?.format ||
-            decodedResult?.decodedResult?.result?.format?.formatName ||
-            ""
-          ).toUpperCase();
-      
-        // chặn QR ngay từ callback
-        if (fmt.includes("QR")) return;
-        
-        console.log("DECODED RAW =", raw, "FORMAT =", fmt);
-        
-        // BỎ QUA QR master / URL / mã không đúng format barcode item
-        if (!isLikelyItemBarcode_(raw)) {
-          setStatus_("err", "Đọc được nhưng sai format: " + raw);
-          return;
-        }
-        
-        // flash đúng vùng barcode khi chỉ khi đã pass filter
+      const videoInputDevices = await codeReader.listVideoInputDevices();
+      const selectedDeviceId = videoInputDevices[0]?.deviceId;
+  
+      const video = document.createElement("video");
+      video.setAttribute("autoplay", true);
+      video.setAttribute("playsinline", true);
+  
+      readerEl.innerHTML = "";
+      readerEl.appendChild(video);
+  
+      codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
+        if (!result || !SCAN.running || SCAN.inflight) return;
+  
+        const raw = result.getText();
+  
+        if (!isLikelyItemBarcode_(raw)) return;
+  
         flashBarcodeBox_();
-        
+  
         const now = Date.now();
         if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
         SCAN.lastHitTs = now;
-        
+  
         const itemObj = extractItemPayload_(raw);
         const prodKey = itemObj.prodKey;
-        
-        if (!prodKey) return;
   
-        lastSeenTs = now;
+        if (!prodKey) return;
   
         if (isLockedPK_(prodKey)) {
           setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
@@ -1773,166 +1676,16 @@
         }
   
         onScan_(itemObj);
-      };
+      });
   
-      const onScanError = () => {};
-  
-      let started = false;
-      
-      function cameraRank_(cam){
-        const label = String(cam?.label || "").toLowerCase();
-      
-        // ưu tiên camera sau "1x / wide" vì barcode gần thường nét hơn ultra-wide
-        if (/back|rear|environment|sau/.test(label)) {
-          if (/wide|1x|main|standard/.test(label)) return 100;
-          if (/tele|zoom|2x|3x/.test(label)) return 80;
-          if (/ultra|ultra-wide|0\.5|macro/.test(label)) return 40;
-          return 70;
-        }
-      
-        if (/front|user|trước/.test(label)) return 0;
-        return 10;
-      }
-      
-      function scanConfig_(useDetector){
-        return {
-          fps: scanProfile.fps,
-          qrbox: scanProfile.qrbox,
-          aspectRatio: scanProfile.aspectRatio,
-          disableFlip: true,
-          formatsToSupport,
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: useDetector
-          }
-        };
-      }
-      
-      async function startWithCameraId_(cameraId, useDetector){
-        await html5Scanner.start(
-          cameraId,
-          scanConfig_(useDetector),
-          onDecoded,
-          onScanError
-        );
-      }
-      
-      async function startWithFacingMode_(useDetector){
-        await html5Scanner.start(
-          { facingMode: { exact: "environment" } },
-          scanConfig_(useDetector),
-          onDecoded,
-          onScanError
-        );
-      }
-      
-      try{
-        const cameras = await Html5Qrcode.getCameras();
-      
-        if (Array.isArray(cameras) && cameras.length){
-          const sorted = [...cameras].sort((a, b) => cameraRank_(b) - cameraRank_(a));
-          console.log("CAMERAS =", sorted.map(c => ({ id: c.id, label: c.label })));
-      
-          // thử lần lượt camera tốt nhất trước
-          for (const cam of sorted) {
-            try{
-              // Android/Chrome thường khá tốt với detector mới
-              await startWithCameraId_(cam.id, !detectRuntime_().isIOS);
-              started = true;
-              break;
-            }catch(e){
-              console.warn("startWithCameraId failed:", cam?.label, e);
-            }
-          }
-        }
-      }catch(err){
-        console.warn("getCameras failed:", err);
-      }
-      
-      if (!started){
-        try{
-          await startWithFacingMode_(!detectRuntime_().isIOS);
-          started = true;
-        }catch(e){
-          console.warn("facingMode start failed:", e);
-        }
-      }
-      
-      if (!started){
-        // fallback cuối cùng cho iPhone: ép dùng zxing, tránh BarcodeDetector nếu nó đọc 1D kém
-        await startWithFacingMode_(false);
-        started = true;
-      }
-  
-      cameraReady = true;
-      scannerReady = true;
-      lastSeenTs = Date.now();
       camWrapEl?.classList.add("scanning");
-      hideHtml5QrcodeExtraUi_();
-
-      try{
-        const track = html5Scanner.getRunningTrack?.();
-        const caps = track?.getCapabilities ? track.getCapabilities() : null;
-      
-        if (track && caps) {
-          const adv = {};
-      
-          if (typeof caps.zoom?.max === "number" && caps.zoom.max >= 2) {
-            adv.zoom = Math.min(2, caps.zoom.max);
-          }
-      
-          if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
-            adv.focusMode = "continuous";
-          }
-      
-          if (caps.torch) {
-            // chỉ bật torch nếu môi trường tối; tạm thời để false mặc định
-            // adv.torch = true;
-          }
-      
-          if (Object.keys(adv).length) {
-            await track.applyConstraints({ advanced: [adv] });
-            console.log("Applied camera constraints:", adv);
-          }
-        }
-      }catch(e){
-        console.warn("Camera tuning skipped:", e);
-      }
   
-      if (!liveClearLoop){
-        liveClearLoop = setInterval(() => {
-          if (!SCAN.running) return;
-      
-          hideHtml5QrcodeExtraUi_();
-      
-          if (SCAN.inflight) return;
-          if (centerPopup.classList.contains("show")) return;
-      
-          if (Date.now() - lastSeenTs > 350 && !SCAN.inflight) {
-            setStatus_("", "");
-          }
-        }, 180);
-      }
+      setStatus_("", "📷 Đang quét barcode...");
+      showToast_("📷 CAMERA ON — ZXING MODE", "ok");
   
-      setStatus_("", "Canh barcode trong khung ngang");
-      showToast_("📷 CAMERA ON — BẮT ĐẦU QUÉT BARCODE", "ok");
-      document.getElementById("scanCard")?.scrollIntoView({ behavior:"smooth", block:"start" });
-  
-    } catch(e){
+    }catch(e){
       console.error(e);
-      await stopScan();
-  
-      const msg = String(e?.message || e || "");
-      const openedFromCameraWebView =
-        /iphone|ipad|ipod/i.test(navigator.userAgent || "") &&
-        (window.navigator.standalone === false || document.referrer.includes("google.com"));
-  
-      showCenterPopup_(
-        "err",
-        "❌ KHÔNG MỞ ĐƯỢC CAMERA",
-        openedFromCameraWebView
-          ? "Hãy mở link này bằng Safari hoặc Chrome trực tiếp rồi thử lại.\n\nKhông mở từ màn hình preview của app Camera."
-          : "Vui lòng kiểm tra quyền camera rồi thử lại."
-      );
+      setStatus_("err", "❌ Không mở được camera");
     }
   }
 
@@ -1947,12 +1700,11 @@
     toast.classList.remove("show");
   
     try{
-      if (html5Scanner){
-        await html5Scanner.stop();
-        await html5Scanner.clear();
+      if (codeReader){
+        codeReader.reset();
       }
     }catch(e){}
-    html5Scanner = null;
+    codeReader = null;
   
     camWrapEl?.classList.remove("scanning");
   
