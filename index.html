@@ -1645,21 +1645,7 @@
     try{
       SCAN.running = true;
   
-      const hints = new Map();
-      hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXingBrowser.BarcodeFormat.CODE_128,
-        ZXingBrowser.BarcodeFormat.CODE_39,
-        ZXingBrowser.BarcodeFormat.CODE_93,
-        ZXingBrowser.BarcodeFormat.CODABAR,
-        ZXingBrowser.BarcodeFormat.ITF,
-        ZXingBrowser.BarcodeFormat.EAN_13,
-        ZXingBrowser.BarcodeFormat.EAN_8,
-        ZXingBrowser.BarcodeFormat.UPC_A,
-        ZXingBrowser.BarcodeFormat.UPC_E
-      ]);
-      hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
-      
-      codeReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
+      codeReader = new ZXingBrowser.BrowserMultiFormatReader();
       
       readerEl.innerHTML = "";
       const video = document.createElement("video");
@@ -1677,7 +1663,7 @@
         }
       };
       
-      await codeReader.decodeFromConstraints(constraints, video, (result, err, controls) => {
+      activeStream = await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
         if (!SCAN.running || SCAN.inflight) return;
       
         if (result) {
@@ -1703,10 +1689,6 @@
       
           onScan_(itemObj);
         }
-      
-        if (controls) {
-          activeStream = controls;
-        }
       });
       
       camWrapEl?.classList.add("scanning");
@@ -1716,7 +1698,7 @@
   
     }catch(e){
       console.error("CAMERA OPEN ERROR =", e);
-      const msg = String(e?.name || e?.message || e || "Unknown");
+      const msg = String(e?.message || e?.name || e || "Unknown");
       setStatus_("err", "❌ Không mở được camera: " + msg);
     }
   }
@@ -1730,12 +1712,6 @@
     hideCenterPopup();
     toast.classList.remove("show");
   
-    try{
-      if (codeReader){
-        codeReader.reset();
-      }
-    }catch(e){}
-    
     try{
       if (activeStream && typeof activeStream.stop === "function"){
         activeStream.stop();
