@@ -1551,11 +1551,15 @@
 
   // ===== scan state =====
   const SCAN = {
-    running:false,
-    inflight:false,
-    cooldownMs: 180,
+    running: false,
+    inflight: false,  
+    cooldownMs: 800,
     lastHitTs: 0,
-    ok:0, skip:0, err:0
+    pauseUntil: 0,
+    lastProdKey: "",
+    ok: 0,
+    skip: 0,
+    err: 0
   };
 
   const PK_OK_LOCK_MS      = 30 * 1000;
