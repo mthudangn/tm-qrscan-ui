@@ -1284,7 +1284,7 @@
       existing.replaceWith(card);
     } else {
       temRow.appendChild(card);
-      while (temRow.children.length > 50) temRow.removeChild(temRow.firstChild);
+      while (temRow.children.length > 30) temRow.removeChild(temRow.firstChild);
     }
   
     temHint.textContent = "Quẹt ngang để xem";
@@ -1669,28 +1669,36 @@
       
       activeStream = await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
         if (!SCAN.running || SCAN.inflight) return;
-      
+        const now = Date.now();
+        if (now < SCAN.pauseUntil) return;
+        
         if (result) {
           const raw = result.getText();
-      
+        
           if (!isLikelyItemBarcode_(raw)) return;
-      
-          flashBarcodeBox_();
-      
-          const now = Date.now();
-          if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
-          SCAN.lastHitTs = now;
-      
+        
           const itemObj = extractItemPayload_(raw);
           const prodKey = itemObj.prodKey;
-      
+        
           if (!prodKey) return;
-      
+        
+          // chặn đọc lặp cùng 1 mã quá nhanh
+          if (prodKey === SCAN.lastProdKey && now - SCAN.lastHitTs < 2500) return;
+        
+          // cooldown toàn scanner
+          if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
+        
+          SCAN.lastHitTs = now;
+          SCAN.lastProdKey = prodKey;
+          SCAN.pauseUntil = now + 1200;
+        
+          flashBarcodeBox_();
+        
           if (isLockedPK_(prodKey)) {
             setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
             return;
           }
-      
+        
           onScan_(itemObj);
         }
       });
