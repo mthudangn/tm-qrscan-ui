@@ -956,7 +956,13 @@
   // Trang sẽ tự lưu 30 ngày (localStorage)
   const API_LS_KEY = "BARCODE_API_BASE_EXEC_V1";
   const API_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-  
+
+  let CURRENT_CTX = {
+    pxk: "",
+    company: "",
+    dateText: ""
+  };
+
   function normalizeExecUrl_(url){
     url = String(url || "").trim();
     url = url.split("#")[0].split("?")[0];
@@ -999,12 +1005,6 @@
     }
   }
 
-  let CURRENT_CTX = {
-    pxk: "",
-    company: "",
-    dateText: ""
-  };
-  
   const API_BASE = loadApiBase_();
   if (!API_BASE){
     // chặn luôn vì chưa có base url
@@ -1666,7 +1666,6 @@
           height: { ideal: 1080 },
           frameRate: { ideal: 30 }
         }
-      };
       };
       
       activeStream = await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
