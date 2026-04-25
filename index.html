@@ -1679,10 +1679,11 @@
           const prodKey = itemObj.prodKey;
         
           if (!prodKey) return;
+          flashBarcodeBox_();
+          
+          const now = Date.now();
           if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
           SCAN.lastHitTs = now;
-        
-          flashBarcodeBox_();
         
           if (isLockedPK_(prodKey)) {
             setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
