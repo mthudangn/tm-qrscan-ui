@@ -1,4 +1,5 @@
-// QUÉT BARCODE THÀNH CÔNG
+// GỘP ERROR = SKIP
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -360,9 +361,9 @@
       position:relative;
       border:2px solid rgba(255,255,255,.25);
       width:100%;
-      max-width:360px;
+      max-width:420px;
       margin:0 auto;
-      height: 130px;
+      height: 190px;
       box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
       transition:
         border-color .12s ease,
@@ -373,8 +374,8 @@
       position:absolute;
       left:50%;
       top:50%;
-      width:min(86%, 330px);
-      height:84px;
+      width:min(94%, 430px);
+      height:90px;
       transform:translate(-50%, -50%);
       border:3px solid rgba(255,255,255,.88);
       border-radius:14px;
@@ -957,7 +958,13 @@
   // Trang sẽ tự lưu 30 ngày (localStorage)
   const API_LS_KEY = "BARCODE_API_BASE_EXEC_V1";
   const API_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-  
+
+  let CURRENT_CTX = {
+    pxk: "",
+    company: "",
+    dateText: ""
+  };
+
   function normalizeExecUrl_(url){
     url = String(url || "").trim();
     url = url.split("#")[0].split("?")[0];
@@ -1000,12 +1007,6 @@
     }
   }
 
-  let CURRENT_CTX = {
-    pxk: "",
-    company: "",
-    dateText: ""
-  };
-  
   const API_BASE = loadApiBase_();
   if (!API_BASE){
     // chặn luôn vì chưa có base url
@@ -1285,7 +1286,7 @@
       existing.replaceWith(card);
     } else {
       temRow.appendChild(card);
-      while (temRow.children.length > 50) temRow.removeChild(temRow.firstChild);
+      while (temRow.children.length > 30) temRow.removeChild(temRow.firstChild);
     }
   
     temHint.textContent = "Quẹt ngang để xem";
@@ -1552,11 +1553,13 @@
 
   // ===== scan state =====
   const SCAN = {
-    running:false,
-    inflight:false,
+    running: false,
+    inflight: false,
     cooldownMs: 180,
     lastHitTs: 0,
-    ok:0, skip:0, err:0
+    ok: 0,
+    skip: 0,
+    err: 0
   };
 
   const PK_OK_LOCK_MS      = 30 * 1000;
@@ -1666,36 +1669,36 @@
       
       activeStream = await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
         if (!SCAN.running || SCAN.inflight) return;
-      
+        const now = Date.now();
+        
         if (result) {
           const raw = result.getText();
-      
+        
           if (!isLikelyItemBarcode_(raw)) return;
-      
+        
+          const itemObj = extractItemPayload_(raw);
+          const prodKey = itemObj.prodKey;
+        
+          if (!prodKey) return;
           flashBarcodeBox_();
-      
+          
           const now = Date.now();
           if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
           SCAN.lastHitTs = now;
-      
-          const itemObj = extractItemPayload_(raw);
-          const prodKey = itemObj.prodKey;
-      
-          if (!prodKey) return;
-      
+        
           if (isLockedPK_(prodKey)) {
             setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
             return;
           }
-      
+        
           onScan_(itemObj);
         }
       });
       
       camWrapEl?.classList.add("scanning");
       
-      setStatus_("", "📷 Đang quét barcode...");
-      showToast_("📷 CAMERA ON — ZXING MODE", "ok");
+      setStatus_("", "📷 Canh barcode cuối tem trong khung");
+      showToast_("📷 CAMERA ON", "ok");
   
     }catch(e){
       console.error("CAMERA OPEN ERROR =", e);
@@ -1810,7 +1813,7 @@
               meta: { today: "" }
             },
             doneBadges: [],
-            note: "Đang lấy thông tin tem..."
+            note: "TEM loading..."
           });
   
           showCheck_();
