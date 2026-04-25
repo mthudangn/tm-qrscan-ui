@@ -876,7 +876,7 @@
       </div>
       
       <div class="miniStat">
-        SKIP <b id="skipC">0</b>
+        ERROR <b id="errC">0</b>
       </div>
     
       <button id="btnStop" class="stopTile" onclick="stopScan()" disabled>
@@ -1045,8 +1045,8 @@
   const statusBig = document.getElementById("statusBig");
   const toast     = document.getElementById("toast");
 
-  const okC   = document.getElementById("okC");
-  const skipC = document.getElementById("skipC");
+  const okC  = document.getElementById("okC");
+  const errC = document.getElementById("errC");
 
   const temRow  = document.getElementById("temRow");
   const temHint = document.getElementById("temHint");
@@ -1581,9 +1581,9 @@
   }
 
   function inc_(k){
-    SCAN[k] = (SCAN[k]||0) + 1;
+    SCAN[k] = (SCAN[k] || 0) + 1;
     okC.textContent = String(SCAN.ok);
-    skipC.textContent = String(SCAN.skip);
+    errC.textContent = String(SCAN.err);
   }
 
   function lockUI_(on){
