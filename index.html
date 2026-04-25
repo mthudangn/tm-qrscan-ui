@@ -955,7 +955,6 @@
   //   https://<your>.github.io/<repo>/?api=https://script.google.com/macros/s/XXXX/exec
   // Trang sẽ tự lưu 30 ngày (localStorage)
   const API_LS_KEY = "BARCODE_API_BASE_EXEC_V1";
-  const PXK_CTX_LS_KEY = "BARCODE_PXK_CTX_V1";
   const API_TTL_MS = 30 * 24 * 60 * 60 * 1000;
   
   function normalizeExecUrl_(url){
@@ -979,22 +978,6 @@
       CURRENT_CTX.pxk = pxk;
       CURRENT_CTX.company = co;
       CURRENT_CTX.dateText = dt;
-    
-      localStorage.setItem(PXK_CTX_LS_KEY, JSON.stringify({
-        pxk,
-        company: co,
-        dateText: dt,
-        ts: Date.now()
-      }));
-    } else {
-      try {
-        const old = JSON.parse(localStorage.getItem(PXK_CTX_LS_KEY) || "null");
-        if (old && old.pxk && old.ts && Date.now() - old.ts <= API_TTL_MS) {
-          CURRENT_CTX.pxk = String(old.pxk || "").trim().toUpperCase();
-          CURRENT_CTX.company = String(old.company || "").trim();
-          CURRENT_CTX.dateText = String(old.dateText || "").trim();
-        }
-      } catch(e) {}
     }
   
     // 1) ưu tiên query param ?api=...
