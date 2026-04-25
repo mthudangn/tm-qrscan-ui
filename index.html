@@ -1555,8 +1555,9 @@
   const SCAN = {
     running: false,
     inflight: false,
-    cooldownMs: 180,
+    cooldownMs: 450,
     lastHitTs: 0,
+    lastLockedMsgTs: 0,
     ok: 0,
     skip: 0,
     err: 0
@@ -1568,12 +1569,29 @@
   const PK_SKIP_LOCK_MS    = 2000;
 
   const prodKeyLock = new Map();
+
+  let mediaStream = null;
+  let nativeDetector = null;
+  let nativeDetectorTimer = null;
+  let nativeCanvas = null;
+
+  function cleanScanText_(text){
+    return String(text || "")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "")
+      .replace(/[｜︱⏐¦]/g, "|")
+      .replace(/\s*\|\s*/g, "|")
+      .trim();
+  }
+
   function isLockedPK_(prodKey){
     const now = Date.now();
-    for (const [k, t] of prodKeyLock) if (t <= now) prodKeyLock.delete(k);
+    for (const [k, t] of prodKeyLock) {
+      if (t <= now) prodKeyLock.delete(k);
+    }
     const t0 = prodKeyLock.get(prodKey);
     return !!(t0 && t0 > now);
   }
+
   function lockPK_(prodKey, ms){
     const dur = Number(ms);
     if (!dur || dur <= 0) return;
@@ -1581,43 +1599,324 @@
   }
 
   function inc_(k){
-    SCAN[k] = (SCAN[k]||0) + 1;
+    SCAN[k] = (SCAN[k] || 0) + 1;
     okC.textContent = String(SCAN.ok);
     skipC.textContent = String(SCAN.skip);
   }
 
   function lockUI_(on){
     if (btnPlay) btnPlay.disabled = on;
-    btnStop.disabled  = !on;
-    stepSel.disabled  = on;
-    wInfo.disabled    = on;
+    btnStop.disabled = !on;
+    stepSel.disabled = on;
+    wInfo.disabled = on;
   }
 
   function flashBarcodeBox_(){
     const box = document.getElementById("barcodeBox");
     if (!box) return;
-  
+
     box.classList.remove("flash-ok");
+    camWrapEl?.classList.remove("flash-ok");
+
     void box.offsetWidth;
+
     box.classList.add("flash-ok");
-  
+    camWrapEl?.classList.add("flash-ok");
+
     clearTimeout(flashBarcodeBox_._t);
     flashBarcodeBox_._t = setTimeout(() => {
       box.classList.remove("flash-ok");
-    }, 220);
+      camWrapEl?.classList.remove("flash-ok");
+    }, 260);
   }
 
-  // ===== camera loop (same) =====
-  let scanLoopOn = false;
-  let scanLoopTimer = null;
-  let cameraReady = false;
-  let lastSeenTs = 0;
-  let liveClearLoop = null;
-  
   function assertSecureContext_(){
-    if (!window.isSecureContext) throw new Error("Camera requires HTTPS (secure context).");
+    if (!window.isSecureContext) {
+      throw new Error("Camera requires HTTPS.");
+    }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error("getUserMedia is not available in this browser.");
+      throw new Error("Camera is not available in this browser.");
+    }
+  }
+
+  async function getCameraStream_(){
+    const tries = [
+      {
+        audio: false,
+        video: {
+          facingMode: { exact: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30, max: 30 }
+        }
+      },
+      {
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30, max: 30 }
+        }
+      },
+      {
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30, max: 30 }
+        }
+      },
+      {
+        audio: false,
+        video: true
+      }
+    ];
+
+    let lastErr = null;
+    for (const constraints of tries) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+
+    throw lastErr || new Error("Cannot open camera.");
+  }
+
+  async function tuneCameraTrack_(stream){
+    try {
+      const track = stream?.getVideoTracks?.()[0];
+      if (!track || !track.getCapabilities || !track.applyConstraints) return;
+
+      const cap = track.getCapabilities() || {};
+      const advanced = {};
+
+      if (Array.isArray(cap.focusMode) && cap.focusMode.includes("continuous")) {
+        advanced.focusMode = "continuous";
+      }
+      if (Array.isArray(cap.exposureMode) && cap.exposureMode.includes("continuous")) {
+        advanced.exposureMode = "continuous";
+      }
+      if (Array.isArray(cap.whiteBalanceMode) && cap.whiteBalanceMode.includes("continuous")) {
+        advanced.whiteBalanceMode = "continuous";
+      }
+
+      if (Object.keys(advanced).length) {
+        await track.applyConstraints({ advanced: [advanced] });
+      }
+    } catch(e) {
+      // Some iPhones/Android WebViews reject advanced constraints. Ignore safely.
+    }
+  }
+
+  function waitVideoReady_(video){
+    return new Promise((resolve, reject) => {
+      if (video.videoWidth && video.videoHeight) {
+        resolve();
+        return;
+      }
+
+      const t = setTimeout(() => reject(new Error("Camera preview timeout.")), 5000);
+
+      const done = () => {
+        if (video.videoWidth && video.videoHeight) {
+          clearTimeout(t);
+          resolve();
+        }
+      };
+
+      video.addEventListener("loadedmetadata", done, { once: true });
+      video.addEventListener("canplay", done, { once: true });
+    });
+  }
+
+  function createZxingReader_(){
+    if (typeof ZXingBrowser === "undefined") {
+      throw new ReferenceError("ZXingBrowser is not loaded");
+    }
+
+    try {
+      const hints = new Map();
+
+      if (ZXingBrowser.DecodeHintType && ZXingBrowser.BarcodeFormat) {
+        if (ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS != null &&
+            ZXingBrowser.BarcodeFormat.CODE_128 != null) {
+          hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
+            ZXingBrowser.BarcodeFormat.CODE_128
+          ]);
+        }
+
+        if (ZXingBrowser.DecodeHintType.TRY_HARDER != null) {
+          hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
+        }
+      }
+
+      return new ZXingBrowser.BrowserMultiFormatReader(hints, 80);
+    } catch(e) {
+      return new ZXingBrowser.BrowserMultiFormatReader();
+    }
+  }
+
+  function handleDecodedText_(rawText){
+    if (!SCAN.running || SCAN.inflight) return;
+
+    const raw = cleanScanText_(rawText);
+    if (!isLikelyItemBarcode_(raw)) return;
+
+    const itemObj = extractItemPayload_(raw);
+    const prodKey = String(itemObj.prodKey || "").trim();
+    if (!prodKey) return;
+
+    const now = Date.now();
+
+    if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
+
+    if (isLockedPK_(prodKey)) {
+      if (now - SCAN.lastLockedMsgTs > 900) {
+        SCAN.lastLockedMsgTs = now;
+        setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
+      }
+      return;
+    }
+
+    SCAN.lastHitTs = now;
+    flashBarcodeBox_();
+    onScan_(itemObj);
+  }
+
+  async function tryStartNativeBarcodeDetector_(video){
+    if (!("BarcodeDetector" in window)) return false;
+
+    try {
+      if (typeof BarcodeDetector.getSupportedFormats === "function") {
+        const formats = await BarcodeDetector.getSupportedFormats();
+        if (Array.isArray(formats) && formats.length && !formats.includes("code_128")) {
+          return false;
+        }
+      }
+
+      nativeDetector = new BarcodeDetector({ formats: ["code_128"] });
+      nativeCanvas = document.createElement("canvas");
+
+      const ctx = nativeCanvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return false;
+
+      const tick = async () => {
+        nativeDetectorTimer = null;
+
+        if (!SCAN.running || !video || video.readyState < 2) {
+          if (SCAN.running) nativeDetectorTimer = setTimeout(tick, 160);
+          return;
+        }
+
+        try {
+          if (!SCAN.inflight) {
+            const vw = video.videoWidth || 0;
+            const vh = video.videoHeight || 0;
+
+            if (vw > 0 && vh > 0) {
+              const cropH = Math.max(180, Math.floor(vh * 0.46));
+              const cropY = Math.max(0, Math.floor((vh - cropH) / 2));
+
+              const outW = Math.min(1280, vw);
+              const outH = Math.max(160, Math.floor(outW * cropH / vw));
+
+              nativeCanvas.width = outW;
+              nativeCanvas.height = outH;
+
+              ctx.drawImage(
+                video,
+                0, cropY, vw, cropH,
+                0, 0, outW, outH
+              );
+
+              const codes = await nativeDetector.detect(nativeCanvas);
+              if (Array.isArray(codes) && codes.length) {
+                for (const b of codes) {
+                  handleDecodedText_(b.rawValue);
+                }
+              }
+            }
+          }
+        } catch(e) {}
+
+        if (SCAN.running) {
+          nativeDetectorTimer = setTimeout(tick, SCAN.inflight ? 260 : 110);
+        }
+      };
+
+      tick();
+      return true;
+    } catch(e) {
+      nativeDetector = null;
+      return false;
+    }
+  }
+
+  async function startZxingDecoder_(video){
+    if (activeStream) return true;
+
+    codeReader = createZxingReader_();
+
+    const controlsOrPromise = codeReader.decodeFromVideoElement(video, (result, err) => {
+      if (!SCAN.running || SCAN.inflight) return;
+
+      if (result) {
+        handleDecodedText_(result.getText());
+      }
+    });
+
+    activeStream = (controlsOrPromise && typeof controlsOrPromise.then === "function")
+      ? await controlsOrPromise
+      : controlsOrPromise;
+
+    return true;
+  }
+
+  function stopScannerHardware_(){
+    if (nativeDetectorTimer) {
+      clearTimeout(nativeDetectorTimer);
+      nativeDetectorTimer = null;
+    }
+
+    nativeDetector = null;
+    nativeCanvas = null;
+
+    try {
+      if (activeStream && typeof activeStream.stop === "function") {
+        activeStream.stop();
+      }
+    } catch(e) {}
+
+    activeStream = null;
+
+    try {
+      if (codeReader && typeof codeReader.reset === "function") {
+        codeReader.reset();
+      }
+    } catch(e) {}
+
+    codeReader = null;
+
+    try {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => {
+          try { t.stop(); } catch(e) {}
+        });
+      }
+    } catch(e) {}
+
+    mediaStream = null;
+
+    const video = readerEl.querySelector("video");
+    if (video) {
+      try { video.pause(); } catch(e) {}
+      try { video.srcObject = null; } catch(e) {}
+      try { video.removeAttribute("src"); } catch(e) {}
+      try { video.load?.(); } catch(e) {}
     }
   }
 
@@ -1633,77 +1932,77 @@
   }
 
   async function startScan(){
-    const worker = String(wInfo.value||"").trim().toLowerCase();
-    const step = String(stepSel.value||"").trim();
-  
+    const worker = String(wInfo.value || "").trim().toLowerCase();
+    const step = String(stepSel.value || "").trim();
+
     if (!worker){ wInfo.focus(); return; }
     if (!step){ stepSel.focus(); return; }
-  
-    lockUI_(true);
-    setStatus_("", "⏳ Đang bật camera...");
 
-    if (typeof ZXingBrowser === "undefined") {
-      throw new ReferenceError("ZXingBrowser is not loaded");
-    }
-  
-    try{
+    try {
+      assertSecureContext_();
+
+      stopScannerHardware_();
+
       SCAN.running = true;
-  
-      codeReader = new ZXingBrowser.BrowserMultiFormatReader();
-      
+      SCAN.inflight = false;
+      SCAN.lastHitTs = 0;
+      SCAN.lastLockedMsgTs = 0;
+
+      lockUI_(true);
+      setStatus_("", "⏳ Đang bật camera...");
+
       readerEl.innerHTML = "";
+
       const video = document.createElement("video");
-      video.setAttribute("autoplay", true);
-      video.setAttribute("playsinline", true);
-      video.setAttribute("muted", true);
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = true;
+      video.setAttribute("autoplay", "autoplay");
+      video.setAttribute("playsinline", "playsinline");
+      video.setAttribute("muted", "muted");
+
       readerEl.appendChild(video);
-      
-      const constraints = {
-        audio: false,
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-      
-      activeStream = await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
-        if (!SCAN.running || SCAN.inflight) return;
-        const now = Date.now();
-        
-        if (result) {
-          const raw = result.getText();
-        
-          if (!isLikelyItemBarcode_(raw)) return;
-        
-          const itemObj = extractItemPayload_(raw);
-          const prodKey = itemObj.prodKey;
-        
-          if (!prodKey) return;
-          flashBarcodeBox_();
-          
-          const now = Date.now();
-          if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
-          SCAN.lastHitTs = now;
-        
-          if (isLockedPK_(prodKey)) {
-            setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
-            return;
-          }
-        
-          onScan_(itemObj);
-        }
-      });
-      
+
+      mediaStream = await getCameraStream_();
+      await tuneCameraTrack_(mediaStream);
+
+      video.srcObject = mediaStream;
+      await video.play();
+      await waitVideoReady_(video);
+
       camWrapEl?.classList.add("scanning");
-      
+
+      const nativeStarted = await tryStartNativeBarcodeDetector_(video);
+
+      if (!nativeStarted) {
+        await startZxingDecoder_(video);
+      } else {
+        // Android usually uses native detector. This delayed ZXing fallback helps iPhone-like WebViews
+        // or Android browsers where BarcodeDetector exists but performs poorly.
+        setTimeout(() => {
+          if (SCAN.running && !activeStream) {
+            startZxingDecoder_(video).catch(() => {});
+          }
+        }, 1500);
+      }
+
       setStatus_("", "📷 Canh barcode cuối tem trong khung");
       showToast_("📷 CAMERA ON", "ok");
-  
-    }catch(e){
+
+    } catch(e) {
       console.error("CAMERA OPEN ERROR =", e);
+
+      SCAN.running = false;
+      SCAN.inflight = false;
+      showPendingStop_();
+      stopScannerHardware_();
+
+      camWrapEl?.classList.remove("scanning");
+      lockUI_(false);
+
       const msg = String(e?.message || e?.name || e || "Unknown");
       setStatus_("err", "❌ Không mở được camera: " + msg);
+      showToast_("❌ Không mở được camera: " + msg, "err");
     }
   }
 
@@ -1712,30 +2011,17 @@
     SCAN.running = false;
     SCAN.inflight = false;
     showPendingStop_();
-  
+
     hideCenterPopup();
     toast.classList.remove("show");
-  
-    try{
-      if (activeStream && typeof activeStream.stop === "function"){
-        activeStream.stop();
-      }
-    }catch(e){}
-    
-    const video = readerEl.querySelector("video");
-    if (video){
-      try{ video.pause(); }catch(e){}
-      video.srcObject = null;
-    }
-    
-    codeReader = null;
-    activeStream = null;
-  
+
+    stopScannerHardware_();
+
     camWrapEl?.classList.remove("scanning");
-  
+
     lockUI_(false);
     setStatus_("", "⏹ Đã dừng camera");
-  
+
     if (liveClearLoop){
       clearInterval(liveClearLoop);
       liveClearLoop = null;
@@ -1745,14 +2031,14 @@
   window.startScan = startScan;
   window.stopScan  = stopScan;
 
-  document.addEventListener("visibilitychange", ()=>{
+  document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      try{ stopScan(); }catch(e){}
+      try { stopScan(); } catch(e) {}
     }
   });
-  window.addEventListener("pagehide", ()=>{ stopScan(); });
-  window.addEventListener("beforeunload", ()=>{ stopScan(); });
 
+  window.addEventListener("pagehide", () => { stopScan(); });
+  window.addEventListener("beforeunload", () => { stopScan(); });
   // ===== onScan_: COMMIT rồi FETCH =====
   function onScan_(scanObj){
     const prodKey = String(scanObj?.prodKey || "").trim();
