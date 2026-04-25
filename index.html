@@ -1552,11 +1552,9 @@
   // ===== scan state =====
   const SCAN = {
     running: false,
-    inflight: false,  
+    inflight: false,
     cooldownMs: 800,
     lastHitTs: 0,
-    pauseUntil: 0,
-    lastProdKey: "",
     ok: 0,
     skip: 0,
     err: 0
@@ -1671,7 +1669,6 @@
       activeStream = await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
         if (!SCAN.running || SCAN.inflight) return;
         const now = Date.now();
-        if (now < SCAN.pauseUntil) return;
         
         if (result) {
           const raw = result.getText();
@@ -1682,16 +1679,8 @@
           const prodKey = itemObj.prodKey;
         
           if (!prodKey) return;
-        
-          // chặn đọc lặp cùng 1 mã quá nhanh
-          if (prodKey === SCAN.lastProdKey && now - SCAN.lastHitTs < 2500) return;
-        
-          // cooldown toàn scanner
           if (now - SCAN.lastHitTs < SCAN.cooldownMs) return;
-        
           SCAN.lastHitTs = now;
-          SCAN.lastProdKey = prodKey;
-          SCAN.pauseUntil = now + 1200;
         
           flashBarcodeBox_();
         
