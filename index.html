@@ -960,6 +960,7 @@
   const API_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
   let CURRENT_CTX = {
+    sid: "",
     pxk: "",
     company: "",
     dateText: ""
@@ -968,9 +969,7 @@
   function normalizeExecUrl_(url){
     url = String(url || "").trim();
     url = url.split("#")[0].split("?")[0];
-    url = url.replace(/\/dev$/i, "/exec");
     url = url.replace(/\/+$/,"");
-    if (!/\/exec$/i.test(url)) url += "/exec";
     return url;
   }
   
@@ -978,10 +977,15 @@
     const qs = new URLSearchParams(location.search);
   
     // BARCODE Master inject context ngay khi mở app
+    const sid = String(qs.get("sid") || "").trim();
     const pxk = String(qs.get("pxk") || "").trim().toUpperCase();
     const co  = String(qs.get("co")  || "").trim();
     const dt  = String(qs.get("dt")  || "").trim();
-  
+    
+    if (sid){
+      CURRENT_CTX.sid = sid;
+    }
+    
     if (pxk){
       CURRENT_CTX.pxk = pxk;
       CURRENT_CTX.company = co;
@@ -1381,6 +1385,12 @@
       if (v === undefined || v === null) continue;
       u.searchParams.set(k, String(v));
     }
+    
+    // route request to the correct PXK master file
+    if (CURRENT_CTX.sid) {
+      u.searchParams.set("sid", CURRENT_CTX.sid);
+    }
+    
     // chống cache
     u.searchParams.set("_ts", String(Date.now()));
 
