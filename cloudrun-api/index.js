@@ -397,28 +397,6 @@ async function ensureQueue_(sheets, sid) {
   await ensureSheet_(sheets, sid, CFG.SHEET_QUEUE, QUEUE_HEADER);
 }
 
-async function appendLog_(sheets, sid, prodKey, step, worker, status, note) {
-  const st = upper_(status);
-  const pk = clean_(prodKey);
-
-  // Same rule as Apps Script: only log OK, plus SYSTEM/INFO.
-  if (st !== "OK" && !(pk === "SYSTEM" && st === "INFO")) return;
-
-  try {
-    await ensureLog_(sheets, sid);
-    await appendRow_(sheets, sid, CFG.SHEET_LOG, [
-      nowVN_(),
-      prodKey || "",
-      step || "",
-      worker || "",
-      st || "",
-      note || ""
-    ]);
-  } catch (e) {
-    // Do not block scanning if LOG fails.
-  }
-}
-
 // =====================================================
 // PXK STATUS / LOOKUP
 // =====================================================
@@ -645,16 +623,6 @@ async function submitStepCommit_(sheets, sid, payload) {
 
   const updatedRow = [...st.row];
   updatedRow[stepCol0] = todayVN_();
-
-  await appendLog_(
-    sheets,
-    sid,
-    prodKey,
-    step,
-    workerInfo,
-    "OK",
-    `Filled ${CFG.STEP_PREFIX}${step} in PXK`
-  );
 
   return {
     ok: true,
