@@ -1,5 +1,3 @@
-// GỘP ERROR = SKIP
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -1400,24 +1398,48 @@
 
   const LIVE_QUEUE = new Map();
   let bulkPollTimer = null;
+
+  const SCAN_BULK_SIZE = 5;
+  const SCAN_BULK_WAIT_MS = 3000;
+  const SCAN_BUFFER = new Map();
+  let scanBulkTimer = null;
+
+  const BULK_POLL_NORMAL_MS = 2500;  // normal: 2.5s, tránh quota
+  const BULK_POLL_BACKOFF_MS = 8000; // khi quota/network lỗi: nghỉ 8s
   
   function startBulkQueuePolling_(){
     if (bulkPollTimer) return;
   
-    bulkPollTimer = setInterval(async ()=>{
-      if (!LIVE_QUEUE.size) return;
+    const tick = async () => {
+      if (!LIVE_QUEUE.size) {
+        bulkPollTimer = null;
+        return;
+      }
   
       const items = Array.from(LIVE_QUEUE.values()).map(x => ({
         prodKey: x.prodKey,
         step: x.step,
-        workerInfo: x.worker
+        workerInfo: x.worker,
+        pxk: CURRENT_CTX.pxk
       }));
+  
+      let nextDelay = BULK_POLL_NORMAL_MS;
   
       try{
         const r = await apiGet_({
           action: "queueStatusBulk",
+          pxk: CURRENT_CTX.pxk,
           items: JSON.stringify(items)
         });
+  
+        // Backend trả lỗi quota / API error thì không spam tiếp
+        if (r && r.ok === false) {
+          const msg = String(r.msg || r.error || "").trim();
+          if (/quota|read requests|rate/i.test(msg)) {
+            nextDelay = BULK_POLL_BACKOFF_MS;
+            setStatus_("skip", "⏳ Google đang giới hạn quota, tự thử lại...");
+          }
+        }
   
         const rows = Array.isArray(r?.items) ? r.items : [];
         for (const it of rows){
@@ -1479,14 +1501,19 @@
             continue;
           }
         }
+      }catch(e){
+        nextDelay = BULK_POLL_BACKOFF_MS;
+      }
   
-        if (!LIVE_QUEUE.size && bulkPollTimer){
-          clearInterval(bulkPollTimer);
-          bulkPollTimer = null;
-        }
+      if (!LIVE_QUEUE.size) {
+        bulkPollTimer = null;
+        return;
+      }
   
-      }catch(e){}
-    }, 700);
+      bulkPollTimer = setTimeout(tick, nextDelay);
+    };
+  
+    bulkPollTimer = setTimeout(tick, 900);
   }
 
   // ===== load steps (guard when API_BASE missing) =====
@@ -1761,7 +1788,88 @@
   });
   window.addEventListener("pagehide", ()=>{ stopScan(); });
   window.addEventListener("beforeunload", ()=>{ stopScan(); });
-  
+
+  // Gom 5 mã scan commit cùng lúc
+  function queueScanCommit_(item){
+    const prodKey = String(item?.prodKey || "").trim();
+    if (!prodKey) return;
+
+    SCAN_BUFFER.set(prodKey, item);
+
+    renderTemCard_({
+      prodKey,
+      kind:"queued",
+      temPrint: {
+        l4: prodKey,
+        footer: { khgh:"", stt:"" },
+        meta: { today: "" }
+      },
+      doneBadges: [],
+      note: "Đang gom batch..."
+    });
+
+    if (SCAN_BUFFER.size >= SCAN_BULK_SIZE) {
+      flushScanCommit_();
+      return;
+    }
+
+    clearTimeout(scanBulkTimer);
+    scanBulkTimer = setTimeout(flushScanCommit_, SCAN_BULK_WAIT_MS);
+  }
+
+  async function flushScanCommit_(){
+    clearTimeout(scanBulkTimer);
+    scanBulkTimer = null;
+
+    if (!SCAN_BUFFER.size) return;
+
+    const batch = Array.from(SCAN_BUFFER.values());
+    SCAN_BUFFER.clear();
+
+    for (const x of batch) {
+      LIVE_QUEUE.set(x.prodKey, {
+        prodKey: x.prodKey,
+        step: x.step,
+        worker: x.workerInfo
+      });
+    }
+
+    startBulkQueuePolling_();
+
+    try{
+      const r = await apiGet_({
+        action: "commitBulk",
+        pxk: CURRENT_CTX.pxk,
+        items: JSON.stringify(batch)
+      });
+
+      if (!r || !r.ok) {
+        const msg = String(r?.msg || r?.error || "commitBulk failed");
+        throw new Error(msg);
+      }
+
+      setStatus_("", `✅ Đã gửi ${batch.length} barcode`);
+    }catch(err){
+      const msg = String(err?.message || err || "Unknown");
+      setStatus_("err", "⚠️ LỖI - " + msg);
+      showToast_("⚠️ " + msg, "warn");
+
+      for (const x of batch) {
+        LIVE_QUEUE.delete(x.prodKey);
+        renderTemCard_({
+          prodKey: x.prodKey,
+          kind:"err",
+          temPrint: {
+            l4: x.prodKey,
+            footer: { khgh:"", stt:"" },
+            meta: { today: "" }
+          },
+          doneBadges: [],
+          note: "Gửi batch lỗi"
+        });
+      }
+    }
+  }
   // ===== onScan_: COMMIT rồi FETCH =====
   function onScan_(scanObj){
     const prodKey = String(scanObj?.prodKey || "").trim();
@@ -1796,85 +1904,20 @@
     }
   
     lockPK_(prodKey, PK_SHORT_LOCK_MS);
-  
-    SCAN.inflight = true;
-    showPendingStart_();
-    setStatus_("", "⏳ Đang nhận barcode… " + shortTem_(prodKey));
-  
-    apiGet_({ action:"commit", prodKey, step, workerInfo: worker, pxk: CURRENT_CTX.pxk })
-      .then(c=>{
-        clearTimeout(SCAN.phaseT);
-        SCAN.phaseT = null;
-  
-        if (c && c.ok && c.code === "QUEUED"){
-          // KHÓA NGAY trước khi thả inflight để camera không quét lại chính barcode này
-          lockPK_(prodKey, PK_OK_LOCK_MS);
-  
-          SCAN.inflight = false;
-          showPendingStop_();
-  
-          renderTemCard_({
-            prodKey,
-            kind:"queued",
-            temPrint: {
-              l4: prodKey,
-              footer: { khgh:"", stt:"" },
-              meta: { today: "" }
-            },
-            doneBadges: [],
-            note: "TEM loading..."
-          });
-  
-          showCheck_();
-          setStatus_("", "✅ Đã nhận barcode - " + shortTem_(prodKey));
-  
-          LIVE_QUEUE.set(prodKey, { prodKey, step, worker });
-          startBulkQueuePolling_();
-          return;
-        }
-  
-        SCAN.inflight = false;
-        showPendingStop_();
-  
-        const msg = String(c?.msg || "ERROR");
-        const isSkip = (c?.code === "SKIP");
-        if (isSkip){
-          lockPK_(prodKey, PK_SKIP_LOCK_MS);
-  
-          inc_("skip");
-          renderTemCard_({
-            prodKey,
-            kind:"skip",
-            temPrint: {
-              l4: prodKey,
-              footer: { khgh:"", stt:"" },
-              meta: { today: "" }
-            },
-            doneBadges: c?.doneBadges || [],
-            note: "Bỏ qua tem cũ"
-          });
-          setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
-          return;
-        }
-  
-        inc_("err");
-        setStatus_("err","⚠️ LỖI - " + msg);
-        showToast_("⚠️ " + msg, "warn");
-      })
-      .catch(err=>{
-        clearTimeout(SCAN.phaseT);
-        SCAN.phaseT = null;
-  
-        SCAN.inflight = false;
-        showPendingStop_();
-  
-        inc_("err");
-        const msg = String(err?.message || "Unknown");
-        setStatus_("err","⚠️ LỖI - " + msg);
-  
-        showCenterPopup_("err", "⚠️ LỖI HỆ THỐNG \nKhông gửi được dữ liệu. QUÉT LẠI.");
-        lockPK_(prodKey, PK_TIMEOUT_LOCK_MS);
-      });
+
+    // Bulk mode: gom nhiều barcode rồi gửi 1 lần
+    SCAN.inflight = false;
+    showPendingStop_();
+
+    showCheck_();
+    setStatus_("", "✅ Đã nhận barcode - " + shortTem_(prodKey));
+
+    queueScanCommit_({
+      prodKey,
+      step,
+      workerInfo: worker,
+      pxk: CURRENT_CTX.pxk
+    });
   }
 </script>
 
