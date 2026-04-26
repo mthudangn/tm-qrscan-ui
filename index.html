@@ -1557,7 +1557,6 @@
   document.addEventListener("DOMContentLoaded", async () => {
     fetchAndPopulateSteps_();
     renderCurrentPxk_();
-    fetchPxkMeta_();
   });
   
   function renderCurrentPxk_(){
@@ -1569,36 +1568,19 @@
       return;
     }
   
-    const co = CURRENT_CTX.company || "Đang tải thông tin xuất kho...";
-    const dt = CURRENT_CTX.dateText || "";
+    const co = String(CURRENT_CTX.company || "").trim();
+    const dt = String(CURRENT_CTX.dateText || "").trim();
   
     el.innerHTML = `
       <div style="text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%;">
         <div>PXK: ${escapeHtml_(CURRENT_CTX.pxk)}</div>
-        <div>${escapeHtml_(co)}${dt ? " 🚚 " + escapeHtml_(dt) : ""}</div>
+        ${
+          (co || dt)
+            ? `<div>${escapeHtml_(co)}${dt ? " 🚚 " + escapeHtml_(dt) : ""}</div>`
+            : `<div>- 🚚 -</div>`
+        }
       </div>
     `;
-  }
-
-  async function fetchPxkMeta_(){
-    if (!API_BASE || !CURRENT_CTX.pxk) return;
-
-    // Nếu QR vẫn có co/dt thì khỏi gọi backend
-    if (CURRENT_CTX.company && CURRENT_CTX.dateText) return;
-
-    try{
-      const r = await apiGet_({
-        action: "getPxkMeta",
-        pxk: CURRENT_CTX.pxk
-      });
-
-      if (!r || !r.ok) return;
-
-      CURRENT_CTX.company = r.customer || CURRENT_CTX.company || "";
-      CURRENT_CTX.dateText = r.dateText || CURRENT_CTX.dateText || "";
-
-      renderCurrentPxk_();
-    }catch(e){}
   }
   
   async function promptPxkBeforeScan_(){
