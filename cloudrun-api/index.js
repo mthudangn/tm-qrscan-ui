@@ -350,6 +350,21 @@ async function appendRow_(sheets, sid, sheetName, values) {
   });
 }
 
+async function appendMultiRows_(sheets, sid, sheetName, rows) {
+  const values = Array.isArray(rows) ? rows.filter(r => Array.isArray(r) && r.length) : [];
+  if (!values.length) return;
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: sid,
+    range: `${qSheet_(sheetName)}!A:Z`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values
+    }
+  });
+}
+
 async function ensureSheet_(sheets, sid, sheetName, header) {
   const exists = await sheetExists_(sheets, sid, sheetName);
 
@@ -840,6 +855,68 @@ async function enqueueCommit_(sheets, sid, payload) {
   };
 }
 
+async function enqueueCommitBulk_(sheets, sid, items, defaultPxk) {
+  const input = Array.isArray(items) ? items : [];
+  const now = nowVN_();
+  const rows = [];
+  const results = [];
+
+  for (const it of input) {
+    const prodKey = clean_(it?.prodKey);
+    const step = upper_(it?.step);
+    const worker = clean_(it?.workerInfo);
+    const pxk = normalizePxkId_(it?.pxk || defaultPxk);
+
+    if (!prodKey || !step || !worker || !pxk) {
+      results.push({
+        prodKey,
+        ok: false,
+        code: "BAD_INPUT",
+        status: "",
+        msg: "Missing fields"
+      });
+      continue;
+    }
+
+    const queueId = makeQueueId_();
+
+    rows.push([
+      now,
+      queueId,
+      prodKey,
+      step,
+      worker,
+      pxk,
+      "PENDING",
+      "",
+      "[]",
+      now
+    ]);
+
+    results.push({
+      prodKey,
+      ok: true,
+      code: "QUEUED",
+      status: "PENDING",
+      msg: "Barcode đã vào hàng chờ",
+      queueId
+    });
+  }
+
+  if (rows.length) {
+    await ensureQueue_(sheets, sid);              // only once
+    await appendMultiRows_(sheets, sid, CFG.SHEET_QUEUE, rows); // only one append request
+  }
+
+  return {
+    ok: true,
+    code: "BULK_QUEUED",
+    count: results.length,
+    queued: rows.length,
+    items: results
+  };
+}
+
 async function readQueueRows_(sheets, sid) {
   await ensureQueue_(sheets, sid);
   return readRange_(sheets, sid, `${qSheet_(CFG.SHEET_QUEUE)}!A1:J5000`);
@@ -1112,43 +1189,16 @@ async function handleRequest_(req, res) {
       });
     }
 
-    // COMMIT BULK 5 tem to enqueue then process a small queue batch
+    // COMMIT BULK: enqueue multiple scanned barcodes with one Sheets append request.
     if (action === "commitBulk") {
-      let items = [];
-      try {
-        items = JSON.parse(p.items || "[]");
-      } catch (e) {
-        items = [];
-      }
+      const items = parseItems_(p.items);
 
-      if (!Array.isArray(items) || !items.length) {
+      if (!items.length) {
         return res.json({ ok:false, code:"BAD_ITEMS", msg:"Missing bulk items" });
       }
 
-      const results = [];
-
-      for (const it of items) {
-        const out = await enqueueCommit_(sheets, sid, {
-          prodKey: it.prodKey,
-          step: it.step,
-          workerInfo: it.workerInfo,
-          pxk: it.pxk || p.pxk
-        });
-        results.push({
-          prodKey: it.prodKey,
-          ok: !!out.ok,
-          code: out.code || "",
-          status: out.status || "",
-          msg: out.msg || ""
-        });
-      }
-
-      return res.json({
-        ok: true,
-        code: "BULK_QUEUED",
-        count: results.length,
-        items: results
-      });
+      const out = await enqueueCommitBulk_(sheets, sid, items, p.pxk);
+      return res.json(out);
     }
     
     // Keep QUEUE logic but makes UI receive DONE/SKIP faster
