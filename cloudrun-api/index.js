@@ -638,7 +638,7 @@ async function submitStepCommit_(sheets, sid, payload) {
     ok: true,
     code: "OK",
     status: "DONE",
-    msg: `Đã ghi nhận: ${stepLabel}`,
+    msg: `Đã báo cáo: ${stepLabel}`,
     doneBadges: getDoneBadges_(updatedRow, st.hMap)
   };
 }
