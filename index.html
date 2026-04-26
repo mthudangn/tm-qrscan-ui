@@ -1237,7 +1237,7 @@
       queued: "🟡 Đã nhận barcode",
       processing: "🟡 Đang xử lý...",
       ok: "🟢 OK",
-      skip: "🟢 OK",
+      skip: "🟢 SKIP",
       err: "🔴 LỖI"
     };
     const statusLabel = statusLabelMap[status] || "🟡 Đã nhận";
@@ -1573,7 +1573,7 @@
   
     el.innerHTML = `
       <div style="text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%;">
-        <div>PXK: ${escapeHtml_(CURRENT_CTX.pxk)}</div>
+        <div>Mã PXK: ${escapeHtml_(CURRENT_CTX.pxk)}</div>
         ${
           (co || dt)
             ? `<div>${escapeHtml_(co)}${dt ? " 🚚 " + escapeHtml_(dt) : ""}</div>`
