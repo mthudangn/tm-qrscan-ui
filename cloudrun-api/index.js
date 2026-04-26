@@ -9,7 +9,6 @@ app.use(express.json({ limit: "2mb" }));
 // =====================================================
 const CFG = {
   SHEET_PXK: "PXK",
-  SHEET_LOG: "LOG",
   SHEET_QUEUE: "QUEUE",
 
   PK_HEADER: "prodKey",
