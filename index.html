@@ -1727,7 +1727,7 @@
           SCAN.lastHitTs = now;
         
           if (isLockedPK_(prodKey)) {
-            setStatus_("skip", "⛔ ĐÃ QUÉT - " + shortTem_(prodKey));
+            setStatus_("skip", "⚠️ ĐÃ QUÉT - " + shortTem_(prodKey));
             return;
           }
         
@@ -1774,7 +1774,7 @@
     camWrapEl?.classList.remove("scanning");
   
     lockUI_(false);
-    setStatus_("", "⏹ Đã dừng camera");
+    setStatus_("", "⛔️ Đã dừng camera");
   
     if (liveClearLoop){
       clearInterval(liveClearLoop);
@@ -1809,7 +1809,7 @@
         meta: { today: "" }
       },
       doneBadges: [],
-      note: "Đang gom batch..."
+      note: "⏳ Đang gom mã..."
     });
 
     if (SCAN_BUFFER.size >= SCAN_BULK_SIZE) {
