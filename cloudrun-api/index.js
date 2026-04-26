@@ -389,10 +389,6 @@ async function ensureSheet_(sheets, sid, sheetName, header) {
   }
 }
 
-async function ensureLog_(sheets, sid) {
-  await ensureSheet_(sheets, sid, CFG.SHEET_LOG, ["TS", "prodKey", "Step", "Worker", "Status", "Note"]);
-}
-
 async function ensureQueue_(sheets, sid) {
   await ensureSheet_(sheets, sid, CFG.SHEET_QUEUE, QUEUE_HEADER);
 }
