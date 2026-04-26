@@ -540,7 +540,7 @@
     .temCard.queued,
     .temCard.processing{ border-color: rgba(245,158,11,.75); }   /* yellow */
     .temCard.ok{ border-color: rgba(34,197,94,.72); }            /* green */
-    .temCard.skip{ border-color: rgba(59,130,246,.70); }         /* blue */
+    .temCard.skip{ border-color: rgba(34,197,94,.72); }          /* green */
     .temCard.err{ border-color: rgba(239,68,68,.72); }           /* red */
     
     .temBox{
@@ -1473,7 +1473,7 @@
             });
   
             if (temStt) speakVi_(`Lỗi tem ${temStt}`);
-            else speakVi_("Tem lỗi");
+            else speakVi_("Kiểm tra kỹ các tem lỗi màu đỏ");
   
             LIVE_QUEUE.delete(prodKey);
             continue;
@@ -1555,7 +1555,6 @@
   async function promptPxkBeforeScan_(){
     if (!CURRENT_CTX.pxk){
       showToast_("❌ Chưa quét QR mở phiếu", "err");
-      speakVi_("Chưa quét QR mở phiếu");
       return false;
     }
     return true;
@@ -1790,9 +1789,9 @@
       vibErr_();
     
       const brief = `${CURRENT_CTX.company || CURRENT_CTX.pxk} - ${CURRENT_CTX.dateText || ""}`.trim().replace(/\s+-\s*$/, "");
-      showToast_(`❌ Sai phiếu\nChỉ quét phiếu: ${brief}`, "err");
+      showToast_(`❌ Sai phiếu\nTìm QR phiếu: ${brief}`, "err");
     
-      speakVi_(`Sai phiếu. Chỉ quét phiếu ${CURRENT_CTX.company} ${CURRENT_CTX.dateText || ""}`);
+      speakVi_(`Sai phiếu. Tìm phiếu công ty ${CURRENT_CTX.company} ngày xuất hàng ${CURRENT_CTX.dateText || ""}`);
       return;
     }
   
@@ -1861,7 +1860,6 @@
         inc_("err");
         setStatus_("err","⚠️ LỖI - " + msg);
         showToast_("⚠️ " + msg, "warn");
-        speakVi_("Có lỗi");
       })
       .catch(err=>{
         clearTimeout(SCAN.phaseT);
@@ -1875,7 +1873,6 @@
         setStatus_("err","⚠️ LỖI - " + msg);
   
         showCenterPopup_("err", "⚠️ LỖI HỆ THỐNG \nKhông gửi được dữ liệu. QUÉT LẠI.");
-        speakVi_("Có lỗi");
         lockPK_(prodKey, PK_TIMEOUT_LOCK_MS);
       });
   }
