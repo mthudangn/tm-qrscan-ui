@@ -1112,8 +1112,46 @@ async function handleRequest_(req, res) {
       });
     }
 
-    // COMMIT = enqueue first, then immediately process a small queue batch
-    // This keeps QUEUE logic but makes UI receive DONE/SKIP faster
+    // COMMIT BULK 5 tem to enqueue then process a small queue batch
+    if (action === "commitBulk") {
+      let items = [];
+      try {
+        items = JSON.parse(p.items || "[]");
+      } catch (e) {
+        items = [];
+      }
+
+      if (!Array.isArray(items) || !items.length) {
+        return res.json({ ok:false, code:"BAD_ITEMS", msg:"Missing bulk items" });
+      }
+
+      const results = [];
+
+      for (const it of items) {
+        const out = await enqueueCommit_(sheets, sid, {
+          prodKey: it.prodKey,
+          step: it.step,
+          workerInfo: it.workerInfo,
+          pxk: it.pxk || p.pxk
+        });
+        results.push({
+          prodKey: it.prodKey,
+          ok: !!out.ok,
+          code: out.code || "",
+          status: out.status || "",
+          msg: out.msg || ""
+        });
+      }
+
+      return res.json({
+        ok: true,
+        code: "BULK_QUEUED",
+        count: results.length,
+        items: results
+      });
+    }
+    
+    // Keep QUEUE logic but makes UI receive DONE/SKIP faster
     if (action === "commit") {
       const out = await enqueueCommit_(sheets, sid, {
         prodKey: p.prodKey,
