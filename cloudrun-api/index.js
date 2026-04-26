@@ -1149,14 +1149,25 @@ async function handleRequest_(req, res) {
       });
     }
 
-    // Direct commit — same API shape as old Apps Script doGet action=commit.
+    // COMMIT = enqueue first, then immediately process a small queue batch
+    // This keeps QUEUE logic but makes UI receive DONE/SKIP faster
     if (action === "commit") {
-      const out = await submitStepCommit_(sheets, sid, {
+      const out = await enqueueCommit_(sheets, sid, {
         prodKey: p.prodKey,
         step: p.step,
         workerInfo: p.workerInfo,
         pxk: p.pxk
       });
+
+      if (out && out.ok) {
+        try {
+          await processQueueBatch_(sheets, sid, 5);
+        } catch (e) {
+          // Do not fail the scan response if immediate queue processing has an issue.
+          // queueStatusBulk will process again on next poll.
+        }
+      }
+
       return res.json(out);
     }
 
@@ -1183,7 +1194,7 @@ async function handleRequest_(req, res) {
     }
 
     // Live queue bulk status. Same intent as old Apps Script:
-    // process a small batch first, then return status for requested items.
+    // process a small batch first, then return status for requested items
     if (action === "queueStatusBulk") {
       let items = parseItems_(p.items);
 
