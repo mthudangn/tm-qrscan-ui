@@ -1406,6 +1406,7 @@
 
   const BULK_POLL_NORMAL_MS = 5000;   // hỏi kết quả mỗi 5s, nhẹ quota hơn
   const BULK_POLL_BACKOFF_MS = 8000; // khi quota/network lỗi: nghỉ 8s
+  let quotaStopAt = 0;
   
   function startBulkQueuePolling_(){
     if (bulkPollTimer) return;
@@ -1437,7 +1438,16 @@
           const msg = String(r.msg || r.error || "").trim();
           if (/quota|read requests|rate/i.test(msg)) {
             nextDelay = BULK_POLL_BACKOFF_MS;
-            setStatus_("skip", "⛔️ Quét quá nhanh, STOP camera nghỉ 10 giây rồi quét lại");
+          
+            const now = Date.now();
+            if (now - quotaStopAt > 8000) {
+              quotaStopAt = now;
+          
+              setStatus_("skip", "⏳ Google đang giới hạn, tự dừng camera. Chờ rồi bật lại...");
+              showToast_("⏳ Google đang giới hạn. Hệ thống đã dừng camera để tránh lỗi thêm.", "warn");
+          
+              try { stopScan(); } catch(e) {}
+            }
           }
         }
   
