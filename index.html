@@ -1443,8 +1443,8 @@
             if (now - quotaStopAt > 8000) {
               quotaStopAt = now;
               try { stopScan(); } catch(e) {}
-              setStatus_("skip", "⛔️ STOP camera - Chờ 10 giây rồi thử lại");
-              showToast_("⏳ Đừng quét quá nhanh! Chờ 10 giây rồi quét tiếp..", "warn");
+              setStatus_("skip", "⛔️ STOP camera - Nghỉ 10 giây rồi thử lại");
+              showToast_("⏳ Đừng quét quá nhanh! Chờ 10 giây mới quét tiếp..", "warn");
             }
           }
         }
