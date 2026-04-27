@@ -1442,11 +1442,9 @@
             const now = Date.now();
             if (now - quotaStopAt > 8000) {
               quotaStopAt = now;
-          
+              try { stopScan(); } catch(e) {}
               setStatus_("skip", "⏳ Google đang giới hạn, tự dừng camera. Chờ rồi bật lại...");
               showToast_("⏳ Google đang giới hạn. Hệ thống đã dừng camera để tránh lỗi thêm.", "warn");
-          
-              try { stopScan(); } catch(e) {}
             }
           }
         }
