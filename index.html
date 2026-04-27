@@ -1852,7 +1852,6 @@
         throw new Error(msg);
       }
 
-      setStatus_("", `✅ Đã gửi ${batch.length} barcode`);
     }catch(err){
       const msg = String(err?.message || err || "Unknown");
       setStatus_("err", "⚠️ LỖI - " + msg);
