@@ -1404,7 +1404,7 @@
   const SCAN_BUFFER = new Map();
   let scanBulkTimer = null;
 
-  const BULK_POLL_NORMAL_MS = 2500;  // normal: 2.5s, tránh quota
+  const BULK_POLL_NORMAL_MS = 5000;   // hỏi kết quả mỗi 5s, nhẹ quota hơn
   const BULK_POLL_BACKOFF_MS = 8000; // khi quota/network lỗi: nghỉ 8s
   
   function startBulkQueuePolling_(){
@@ -1437,7 +1437,7 @@
           const msg = String(r.msg || r.error || "").trim();
           if (/quota|read requests|rate/i.test(msg)) {
             nextDelay = BULK_POLL_BACKOFF_MS;
-            setStatus_("skip", "⏳ Quota hết giới hạn, tải lại trang để quét...");
+            setStatus_("skip", "⛔️ Quét quá nhanh, STOP camera nghỉ 10 giây rồi quét lại");
           }
         }
   
@@ -1838,8 +1838,6 @@
       });
     }
 
-    startBulkQueuePolling_();
-
     try{
       const r = await apiGet_({
         action: "commitBulk",
@@ -1851,6 +1849,8 @@
         const msg = String(r?.msg || r?.error || "commitBulk failed");
         throw new Error(msg);
       }
+
+      startBulkQueuePolling_();
 
     }catch(err){
       const msg = String(err?.message || err || "Unknown");
