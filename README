@@ -1,0 +1,24 @@
+# Manufacturing QR and Barcode Scanning System
+
+A cloud-based mobile scanning system designed for manufacturing-floor operations, production tracking, and real-time Google Sheets updates.
+
+The system combines a lightweight mobile web interface with a Google Cloud Run backend and queue-based spreadsheet processing.
+
+```text
+QR Master
+    ↓
+Open Mobile Scanning UI
+    ↓
+Resolve Spreadsheet and PXK Context
+    ↓
+Scan Product Barcode
+    ↓
+Validate Manufacturing Workflow Step
+    ↓
+Submit Request to Cloud Run API
+    ↓
+Write Request to Google Sheets Queue
+    ↓
+Process Manufacturing Update
+    ↓
+Return OK, SKIP, or ERROR Status
